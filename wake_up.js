@@ -418,9 +418,17 @@ async function runWakeUp() {
   const messages = loadTimelineMessages();
   if (!messages) return;
 
-  const lastUserTime = getLastUserTime(messages);
+  let lastUserTime = getLastUserTime(messages);
   if (!lastUserTime) {
-    console.log("未找到用户时间");
+    console.log("未找到用户时间，使用当前时间减去60分钟作为回退");
+    lastUserTime = new Date(Date.now() - 60 * 60 * 1000);
+  }
+
+  const now = new Date();
+  const diffMinutes = Math.floor((now - lastUserTime) / 1000 / 60);
+
+  if (!shouldWake(lastUserTime)) {
+    console.log("\n暂不需要唤醒\n");
     return;
   }
 
