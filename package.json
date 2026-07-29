@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A local Kelivo gateway that is the server.js",
   "scripts": {
-    "start": "concurrently \"node server.js\" \"node wake_up.js\"",
+    "start": "node server.js",
     "wake": "node wake_up.js",
     "test": "node --test"
   },
@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@fastify/formbody": "^8.0.2",
-    "concurrently": "^9.1.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.3.3",
     "fs-extra": "^11.3.5",
