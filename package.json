@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A local Kelivo gateway that is the server.js",
   "scripts": {
-    "start": "node server.js",
+    ZBPACK_START_COMMAND = node server.js & node wake_up.js
     "wake": "node wake_up.js",
     "test": "node --test"
   },
