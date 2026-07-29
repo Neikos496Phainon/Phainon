@@ -1,9 +1,9 @@
 {
   "name": "kelivo-gateway",
   "version": "1.0.0",
-  "description": "A local Kelivo gateway that is the server.js",
+  "description": "A local Kelivo gateway that scripts",
   "scripts": {
-    ZBPACK_START_COMMAND = node server.js & node wake_up.js
+    "start": "node server.js",
     "wake": "node wake_up.js",
     "test": "node --test"
   },
