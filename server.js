@@ -1,6 +1,15 @@
 require("dotenv").config();
 
 // ===== 自动启动 wake_up.js 子进程 =====
+// const { spawn } = require('child_process');
+// const wakeProcess = spawn('node', ['wake_up.js'], {
+//   stdio: 'inherit',
+//   detached: true,
+// });
+// wakeProcess.unref();
+// console.log('[server] wake_up.js 子进程已启动');
+// ======================================
+
 const { spawn } = require('child_process');
 const wakeProcess = spawn('node', ['wake_up.js'], {
   stdio: 'inherit',
