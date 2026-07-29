@@ -13,6 +13,9 @@ const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY || 'default-key-change-me';
 const ALLOW_PUBLIC_API = process.env.ALLOW_PUBLIC_API === 'true';
+const TARGET_API_URL = process.env.TARGET_API_URL;
+const TARGET_API_KEY = process.env.TARGET_API_KEY;
+const MODEL_NAME = process.env.MODEL_NAME || 'deepseek-chat';
 const TIMELINE_PATH = path.join(__dirname, 'enhanced_messages.json');
 
 // ========================
@@ -110,7 +113,6 @@ fastify.post('/internal/wake-event', async (req, reply) => {
   wakeEvents.push(entry);
   if (wakeEvents.length > 100) wakeEvents.shift();
 
-  // 也写入 timeline（可选）
   timeline.push({
     role: 'system',
     content: `[唤醒事件] ${content}`,
@@ -125,43 +127,43 @@ fastify.post('/internal/heartbeat', async () => {
   return { ok: true };
 });
 
-// 主聊天接口
+// ========================
+// 主聊天接口（只定义一次！）
+// ========================
 fastify.post('/v1/chat/completions', async (req, reply) => {
-  const apiKey = req.headers['x-api-key'] || req.headers.authorization?.split(' ')[1];
+  const apiKey = req.headers['x-api-key'] || req.headers.authorization?.split(' ')[1] || '';
+
+  // 1. 检查是否允许公网访问
   if (!ALLOW_PUBLIC_API) {
-    // 仅允许局域网访问
     const ip = req.ip || req.connection.remoteAddress;
     if (!ip.startsWith('192.168.') && !ip.startsWith('10.') && !ip.startsWith('127.0.0.1')) {
       reply.status(403).send({ error: 'Forbidden: 仅允许局域网访问，如需公网请设置 ALLOW_PUBLIC_API=true' });
       return;
     }
   } else {
-    // 公网模式下，必须验证 Gateway API Key
+    // 2. 公网模式下，验证 Gateway API Key
     if (apiKey !== GATEWAY_API_KEY) {
       reply.status(401).send({ error: 'Gateway API Key 无效或缺失' });
       return;
     }
   }
 
-  // 转发请求到上游模型
-  const targetUrl = process.env.TARGET_API_URL;
-  const targetKey = process.env.TARGET_API_KEY;
-  const modelName = process.env.MODEL_NAME || 'deepseek-chat';
-
-  if (!targetUrl || !targetKey) {
+  // 3. 检查上游配置
+  if (!TARGET_API_URL || !TARGET_API_KEY) {
     reply.status(500).send({ error: 'TARGET_API_URL 或 TARGET_API_KEY 未设置' });
     return;
   }
 
+  // 4. 转发请求到上游模型
   try {
-    const response = await fetch(targetUrl, {
+    const response = await fetch(TARGET_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${targetKey}`,
+        'Authorization': `Bearer ${TARGET_API_KEY}`,
       },
       body: JSON.stringify({
-        model: modelName,
+        model: MODEL_NAME,
         messages: req.body.messages || [],
         temperature: req.body.temperature || 0.7,
         max_tokens: req.body.max_tokens || 2048,
