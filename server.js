@@ -26,16 +26,17 @@ app.register(require("@fastify/formbody"));
 
 const PORT = Number(process.env.PORT) || 3000;
 const TARGET_API_URL = process.env.TARGET_API_URL;
+const DATA_DIR = process.env.DATA_DIR || __dirname;
 const TIME_ZONE = resolveTimeZone();
 const IS_RAILWAY_RUNTIME = Boolean(
   process.env.RAILWAY_ENVIRONMENT ||
   process.env.RAILWAY_PROJECT_ID ||
   process.env.RAILWAY_SERVICE_ID
 );
-const TIMELINE_FILE = "enhanced_messages.json";
-const TIMESTAMP_DB_FILE = "./message_timestamps.json";
-// 批注 2026-07-17：管理页保存 .env 后要让 PM2 刷新进程环境；保留原进程名，
-// 只补 --update-env，避免用户改完推送配置却继续运行旧值。
+const TIMELINE_FILE = path.join(DATA_DIR, "enhanced_messages.json");
+const TIMESTAMP_DB_FILE = path.join(DATA_DIR, "message_timestamps.json");
+// æ¹æ³¨ 2026-07-17ï¼ç®¡çé¡µä¿å­ .env åè¦è®© PM2 å·æ°è¿ç¨ç¯å¢ï¼ä¿çåè¿ç¨åï¼
+// åªè¡¥ --update-envï¼é¿åç¨æ·æ¹å®æ¨ééç½®å´ç»§ç»­è¿è¡æ§å¼ã
 const DEFAULT_RESTART_COMMAND = "pm2 restart gateway wake-up --update-env";
 
 function readBooleanEnv(key, fallback = false) {
@@ -45,17 +46,17 @@ function readBooleanEnv(key, fallback = false) {
 }
 
 function configuredModelName() {
-  // 批注 2026-07-15：/v1/models 要暴露部署者实际配置的模型名；
-  // 不能继续硬编码示例模型，否则 Kelivo 模型选择会和真实上游不一致。
+  // æ¹æ³¨ 2026-07-15ï¼/v1/models è¦æ´é²é¨ç½²èå®ééç½®çæ¨¡ååï¼
+  // ä¸è½ç»§ç»­ç¡¬ç¼ç ç¤ºä¾æ¨¡åï¼å¦å Kelivo æ¨¡åéæ©ä¼åçå®ä¸æ¸¸ä¸ä¸è´ã
   return String(process.env.MODEL_NAME || "gateway-model").trim() || "gateway-model";
 }
 
 // ========================
-// 多模态消息处理
+// å¤æ¨¡ææ¶æ¯å¤ç
 // ========================
 function shouldForwardMultimodalContent() {
-  // 批注 2026-07-15：默认把 Kelivo 的图片 content 数组原样交给视觉模型；
-  // 如果上游不是多模态模型，部署者仍可显式设 MULTIMODAL_MODE=text 退回旧的 [图片] 占位模式。
+  // æ¹æ³¨ 2026-07-15ï¼é»è®¤æ Kelivo çå¾ç content æ°ç»åæ ·äº¤ç»è§è§æ¨¡åï¼
+  // å¦æä¸æ¸¸ä¸æ¯å¤æ¨¡ææ¨¡åï¼é¨ç½²èä»å¯æ¾å¼è®¾ MULTIMODAL_MODE=text éåæ§ç [å¾ç] å ä½æ¨¡å¼ã
   const mode = (process.env.MULTIMODAL_MODE || "passthrough").trim().toLowerCase();
   return !["text", "plain", "placeholder", "false", "off", "0"].includes(mode);
 }
@@ -96,17 +97,17 @@ function normalizeContentToText(content) {
       .map(part => {
         const text = getTextFromContentPart(part).trim();
         if (text) return text;
-        if (isImageContentPart(part)) return "[图片]";
-        if (isFileContentPart(part)) return "[文件]";
+        if (isImageContentPart(part)) return "[å¾ç]";
+        if (isFileContentPart(part)) return "[æä»¶]";
         return "";
       })
       .filter(Boolean);
     return parts.join("\n");
   }
 
-  if (isImageContentPart(content)) return "[图片]";
-  if (isFileContentPart(content)) return "[文件]";
-  return "[非文本内容]";
+  if (isImageContentPart(content)) return "[å¾ç]";
+  if (isFileContentPart(content)) return "[æä»¶]";
+  return "[éææ¬åå®¹]";
 }
 
 function normalizeMessageForTimeline(msg) {
@@ -198,7 +199,7 @@ function safeJsonForInlineScript(value) {
 }
 
 // ========================
-// 读取 timeline
+// è¯»å timeline
 // ========================
 function loadTimeline() {
   if (!fs.existsSync(TIMELINE_FILE)) return [];
@@ -206,7 +207,7 @@ function loadTimeline() {
 }
 
 // ========================
-// 保存 timeline（保留 SP）
+// ä¿å­ timelineï¼ä¿ç SPï¼
 // ========================
 function saveTimeline(messages) {
   const sp = messages.find(m => m.role === "system");
@@ -217,23 +218,23 @@ function saveTimeline(messages) {
 }
 
 // ========================
-// 提取时间戳（支持多种格式）
+// æåæ¶é´æ³ï¼æ¯æå¤ç§æ ¼å¼ï¼
 // ========================
 function parseTimestampLabel(value) {
   const text = String(value || "");
-  const match = text.match(/（?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:：](\d{2})/);
+  const match = text.match(/ï¼?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:ï¼](\d{2})/);
   if (!match) return null;
   const [, yyyy, , month, day, hour, minute] = match;
-  // 批注 2026-07-30：Kelivo 写进消息前缀的是用户配置时区的墙上时间；
-  // 公网/Railway 不能按服务器 UTC 解析，否则时间线和自动唤醒都会被推迟。
+  // æ¹æ³¨ 2026-07-30ï¼Kelivo åè¿æ¶æ¯åç¼çæ¯ç¨æ·éç½®æ¶åºçå¢ä¸æ¶é´ï¼
+  // å¬ç½/Railway ä¸è½ææå¡å¨ UTC è§£æï¼å¦åæ¶é´çº¿åèªå¨å¤éé½ä¼è¢«æ¨è¿ã
   return zonedWallTimeToDate({ year: yyyy, month, day, hour, minute }, TIME_ZONE);
 }
 
 function stripLeadingTimestamp(content) {
-  // 批注 2026-07-15：兼容 Kelivo 有时把日期和时间贴在一起的前缀；
-  // 旧格式 "YYYY-MM-DD HH:mm" 继续保留，新格式 "YYYY-MM-DDHH:mm" 不再导致时间记忆/排序失效。
+  // æ¹æ³¨ 2026-07-15ï¼å¼å®¹ Kelivo ææ¶ææ¥æåæ¶é´è´´å¨ä¸èµ·çåç¼ï¼
+  // æ§æ ¼å¼ "YYYY-MM-DD HH:mm" ç»§ç»­ä¿çï¼æ°æ ¼å¼ "YYYY-MM-DDHH:mm" ä¸åå¯¼è´æ¶é´è®°å¿/æåºå¤±æã
   return String(content || "")
-    .replace(/^（?\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]?)\d{1,2}[:：]\d{2}[）\s]*/, "")
+    .replace(/^ï¼?\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]?)\d{1,2}[:ï¼]\d{2}[ï¼\s]*/, "")
     .trim();
 }
 
@@ -242,7 +243,7 @@ function extractTimestamp(content) {
 }
 
 // ========================
-// 时间戳记忆库
+// æ¶é´æ³è®°å¿åº
 // ========================
 function loadTimestampDB() {
   if (!fs.existsSync(TIMESTAMP_DB_FILE)) return {};
@@ -276,18 +277,18 @@ function extractTimestampWithMemory(msg, tsDB) {
 }
 
 // ========================
-// 消息判断
+// æ¶æ¯å¤æ­
 // ========================
 function isSpecialEvent(msg) {
   if (msg.role !== "assistant") return false;
   const c = normalizeContentToText(msg.content);
-  // 批注 2026-07-11：推送渠道从 Bark 扩展到 ntfy；继续兼容早期时间线里的 Bark/宝宝事件，避免升级后旧唤醒事件丢失。
+  // æ¹æ³¨ 2026-07-11ï¼æ¨éæ¸ éä» Bark æ©å±å° ntfyï¼ç»§ç»­å¼å®¹æ©ææ¶é´çº¿éç Bark/å®å®äºä»¶ï¼é¿ååçº§åæ§å¤éäºä»¶ä¸¢å¤±ã
   return (
-    c.includes("刚刚给宝宝发了 Bark") ||
-    c.includes("刚刚给用户发了 Bark") ||
-    c.includes("自动唤醒：本次未发送 Bark") ||
-    c.includes("自动唤醒：本次未发送推送") ||
-    (c.includes("刚刚给用户发了") && c.includes("推送"))
+    c.includes("ååç»å®å®åäº Bark") ||
+    c.includes("ååç»ç¨æ·åäº Bark") ||
+    c.includes("èªå¨å¤éï¼æ¬æ¬¡æªåé Bark") ||
+    c.includes("èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨é") ||
+    (c.includes("ååç»ç¨æ·åäº") && c.includes("æ¨é"))
   );
 }
 
@@ -308,7 +309,7 @@ function isSystemRule(msg) {
 }
 
 // ========================
-// 构建 Timeline
+// æå»º Timeline
 // ========================
 function buildTimeline(kelivoMessages, tsDB) {
   const oldTimeline = loadTimeline();
@@ -388,7 +389,7 @@ function buildTimeline(kelivoMessages, tsDB) {
 }
 
 // ========================
-// 追加特殊事件
+// è¿½å ç¹æ®äºä»¶
 // ========================
 function appendSpecialEvent(content) {
   const timeline = loadTimeline();
@@ -399,8 +400,8 @@ function appendSpecialEvent(content) {
   const newEvent = { role: "assistant", content, position: maxPos + 0.5 };
   timeline.push(newEvent);
   saveTimeline(timeline);
-  // 批注 2026-07-15：特殊事件可能包含推送正文；日志只记录长度，避免公开部署时泄漏私密内容。
-  console.log(`\n已记录特殊事件 (position ${newEvent.position}, chars ${normalizeContentToText(content).length})\n`);
+  // æ¹æ³¨ 2026-07-15ï¼ç¹æ®äºä»¶å¯è½åå«æ¨éæ­£æï¼æ¥å¿åªè®°å½é¿åº¦ï¼é¿åå¬å¼é¨ç½²æ¶æ³æ¼ç§å¯åå®¹ã
+  console.log(`\nå·²è®°å½ç¹æ®äºä»¶ (position ${newEvent.position}, chars ${normalizeContentToText(content).length})\n`);
 }
 
 function stripPosition(messages) {
@@ -410,10 +411,10 @@ function stripPosition(messages) {
 let wakeUpLastHeartbeat = null;
 
 // ========================
-// 预设方案
+// é¢è®¾æ¹æ¡
 // ========================
-const PRESETS_FILE = "./presets.json";
-const ENV_FILE = ".env";
+const PRESETS_FILE = path.join(DATA_DIR, "presets.json");
+const ENV_FILE = path.join(DATA_DIR, ".env");
 const PREFERRED_ENV_ORDER = [
   "TARGET_API_URL",
   "TARGET_API_KEY",
@@ -504,30 +505,30 @@ function readRestartCommand() {
 }
 
 // ========================
-// 安全：放行 /admin，其他仅本地/局域网
+// å®å¨ï¼æ¾è¡ /adminï¼å¶ä»ä»æ¬å°/å±åç½
 // ========================
 app.addHook("onRequest", (req, reply, done) => {
   if (req.url.startsWith("/admin")) return done();
-  // 批注 2026-07-15：公网部署常经过反代，真实公网请求可能在 Node 侧显示为 127/10 网段；
-  // 所以 ALLOW_PUBLIC_API=true 后必须先验 /v1 的网关 key，避免被云平台内网 IP 绕过。
+  // æ¹æ³¨ 2026-07-15ï¼å¬ç½é¨ç½²å¸¸ç»è¿åä»£ï¼çå®å¬ç½è¯·æ±å¯è½å¨ Node ä¾§æ¾ç¤ºä¸º 127/10 ç½æ®µï¼
+  // æä»¥ ALLOW_PUBLIC_API=true åå¿é¡»åéª /v1 çç½å³ keyï¼é¿åè¢«äºå¹³å°åç½ IP ç»è¿ã
   if (readBooleanEnv("ALLOW_PUBLIC_API", false) && req.url.startsWith("/v1/")) {
     const configuredKey = readEnvValue("GATEWAY_API_KEY");
     if (!configuredKey) {
-      reply.code(401).send({ error: "公网 /v1 已开启，但 GATEWAY_API_KEY 未配置" });
+      reply.code(401).send({ error: "å¬ç½ /v1 å·²å¼å¯ï¼ä½ GATEWAY_API_KEY æªéç½®" });
       return;
     }
     const auth = String(req.headers.authorization || "");
     const bearer = auth.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || "";
     const headerKey = String(req.headers["x-gateway-api-key"] || req.headers["x-api-key"] || "").trim();
     if (bearer === configuredKey || headerKey === configuredKey) return done();
-    // 批注 2026-07-30：Kelivo 可能在模型探测或旧预设里继续带错 key；
-    // 只记路径和 header 类型，帮助排查缓存/重复请求，绝不把任意密钥写入日志。
+    // æ¹æ³¨ 2026-07-30ï¼Kelivo å¯è½å¨æ¨¡åæ¢æµææ§é¢è®¾éç»§ç»­å¸¦é keyï¼
+    // åªè®°è·¯å¾å header ç±»åï¼å¸®å©ææ¥ç¼å­/éå¤è¯·æ±ï¼ç»ä¸æä»»æå¯é¥åå¥æ¥å¿ã
     console.warn(JSON.stringify({
       event: "gateway_auth_rejected",
       path: req.url.split("?")[0],
       auth_source: bearer ? "bearer" : headerKey ? "x-api-key" : "missing"
     }));
-    reply.code(401).send({ error: "Gateway API Key 无效或缺失" });
+    reply.code(401).send({ error: "Gateway API Key æ ææç¼ºå¤±" });
     return;
   }
   const ip = req.ip || req.connection.remoteAddress;
@@ -552,8 +553,8 @@ app.get("/v1/models", async (req, reply) => {
 app.post("/v1/chat/completions", async (req, reply) => {
   try {
     const body = req.body;
-    // 批注 2026-07-15：公开部署时日志不能默认写入完整上下文；
-    // 这里只保留请求摘要，避免 system prompt、记忆和聊天正文进入 pm2 日志。
+    // æ¹æ³¨ 2026-07-15ï¼å¬å¼é¨ç½²æ¶æ¥å¿ä¸è½é»è®¤åå¥å®æ´ä¸ä¸æï¼
+    // è¿éåªä¿çè¯·æ±æè¦ï¼é¿å system promptãè®°å¿åèå¤©æ­£æè¿å¥ pm2 æ¥å¿ã
     console.log(JSON.stringify({
       event: "kelivo_request",
       model: body?.model || "",
@@ -581,8 +582,8 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const finalTimeline = buildTimeline(kelivoMessages, tsDB);
     saveTimeline(finalTimeline);
 
-    // Kelivo 发图时 content 常是数组。默认原样透传给视觉模型；
-    // 如上游不支持图片，可设置 MULTIMODAL_MODE=text 退回文本占位。
+    // Kelivo åå¾æ¶ content å¸¸æ¯æ°ç»ãé»è®¤åæ ·éä¼ ç»è§è§æ¨¡åï¼
+    // å¦ä¸æ¸¸ä¸æ¯æå¾çï¼å¯è®¾ç½® MULTIMODAL_MODE=text éåææ¬å ä½ã
     const llmMessages = kelivoMessages
       .map(prepareMessageForLLM)
       .filter(Boolean);
@@ -596,7 +597,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
       })
     );
 
-    console.log("本次注入的特殊事件数量:", oldEvents.length);
+    console.log("æ¬æ¬¡æ³¨å¥çç¹æ®äºä»¶æ°é:", oldEvents.length);
 
     for (const event of oldEvents) {
       const eventTime = extractTimestampWithMemory(event, tsDB);
@@ -620,11 +621,11 @@ app.post("/v1/chat/completions", async (req, reply) => {
       messages: summarizeMessagesForLog(llmMessages)
     }));
 
-    // ---- 自动修复不完整的 tool 调用（双向清理） ----
-    // 第一遍：标记需要移除的索引
+    // ---- èªå¨ä¿®å¤ä¸å®æ´ç tool è°ç¨ï¼ååæ¸çï¼ ----
+    // ç¬¬ä¸éï¼æ è®°éè¦ç§»é¤çç´¢å¼
     const removeSet = new Set();
 
-    // 检查 assistant tool_calls 是否完整
+    // æ£æ¥ assistant tool_calls æ¯å¦å®æ´
     for (let i = 0; i < llmMessages.length; i++) {
       const msg = llmMessages[i];
       if (msg.role !== "assistant" || !msg.tool_calls) continue;
@@ -641,7 +642,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
       const foundIds = followingTools.map(t => t.tool_call_id);
       const complete = expectedIds.every(id => foundIds.includes(id));
       if (!complete) {
-        // 标记这条 assistant 为移除，同时标记它后面的所有 tool 消息也移除
+        // æ è®°è¿æ¡ assistant ä¸ºç§»é¤ï¼åæ¶æ è®°å®åé¢çææ tool æ¶æ¯ä¹ç§»é¤
         removeSet.add(i);
         for (let j = i + 1; j < llmMessages.length; j++) {
           if (llmMessages[j].role === "tool") {
@@ -650,49 +651,49 @@ app.post("/v1/chat/completions", async (req, reply) => {
             break;
           }
         }
-        console.log(`⚠️ 自动修复：移除不完整的 tool_calls (索引 ${i})`);
+        console.log(`â ï¸ èªå¨ä¿®å¤ï¼ç§»é¤ä¸å®æ´ç tool_calls (ç´¢å¼ ${i})`);
       }
     }
 
-    // 检查孤立 tool 消息（前面没有对应的 tool_calls）
+    // æ£æ¥å­¤ç« tool æ¶æ¯ï¼åé¢æ²¡æå¯¹åºç tool_callsï¼
     for (let i = 0; i < llmMessages.length; i++) {
       if (llmMessages[i].role !== "tool") continue;
-      // 向前查找最近的 assistant
+      // ååæ¥æ¾æè¿ç assistant
       let hasMatchingToolCalls = false;
       for (let j = i - 1; j >= 0; j--) {
         const prev = llmMessages[j];
         if (prev.role === "assistant" && prev.tool_calls) {
-          // 检查这个 tool_call_id 是否在 assistant 的 tool_calls 中
+          // æ£æ¥è¿ä¸ª tool_call_id æ¯å¦å¨ assistant ç tool_calls ä¸­
           const ids = prev.tool_calls.map(tc => tc.id);
           if (ids.includes(llmMessages[i].tool_call_id)) {
             hasMatchingToolCalls = true;
           }
           break;
         } else if (prev.role === "tool") {
-          continue; // 继续向前找
+          continue; // ç»§ç»­ååæ¾
         } else {
-          break; // 遇到 user 或其他消息，停止
+          break; // éå° user æå¶ä»æ¶æ¯ï¼åæ­¢
         }
       }
       if (!hasMatchingToolCalls) {
         removeSet.add(i);
-        console.log(`⚠️ 自动修复：移除孤立的 tool 消息 (索引 ${i})`);
+        console.log(`â ï¸ èªå¨ä¿®å¤ï¼ç§»é¤å­¤ç«ç tool æ¶æ¯ (ç´¢å¼ ${i})`);
       }
     }
 
-    // 按索引从大到小删除，避免索引错乱
+    // æç´¢å¼ä»å¤§å°å°å é¤ï¼é¿åç´¢å¼éä¹±
     const sortedRemove = Array.from(removeSet).sort((a, b) => b - a);
     for (const idx of sortedRemove) {
       llmMessages.splice(idx, 1);
     }
 
     if (!TARGET_API_URL || !process.env.TARGET_API_KEY) {
-      return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY 未配置" });
+      return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY æªéç½®" });
     }
 
     const requestedStream = body?.stream === true;
 
-    // 请求模型
+    // è¯·æ±æ¨¡å
     const response = await fetch(TARGET_API_URL, {
       method: "POST",
       headers: {
@@ -705,7 +706,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const upstreamContentType = response.headers.get("content-type") || "";
     const shouldStreamResponse = requestedStream || upstreamContentType.includes("text/event-stream");
 
-    // 批注 2026-07-11：Kelivo 关闭 stream 时需要收到普通 JSON；只在请求或上游确认为 SSE 时才按流式直通。
+    // æ¹æ³¨ 2026-07-11ï¼Kelivo å³é­ stream æ¶éè¦æ¶å°æ®é JSONï¼åªå¨è¯·æ±æä¸æ¸¸ç¡®è®¤ä¸º SSE æ¶æææµå¼ç´éã
     if (!shouldStreamResponse) {
       const responseText = await response.text();
       return reply
@@ -715,7 +716,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     if (!response.body) {
-      return reply.code(response.status).send({ error: "上游 API 没有返回可读取的响应体" });
+      return reply.code(response.status).send({ error: "ä¸æ¸¸ API æ²¡æè¿åå¯è¯»åçååºä½" });
     }
 
     reply.raw.writeHead(response.status, {
@@ -738,7 +739,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
 });
 
 // ========================
-// 内部接口：记录唤醒事件
+// åé¨æ¥å£ï¼è®°å½å¤éäºä»¶
 // ========================
 app.post("/internal/wake-event", async (req, reply) => {
   try {
@@ -753,11 +754,11 @@ app.post("/internal/wake-event", async (req, reply) => {
 });
 
 // ========================
-// 读取 .env 值
+// è¯»å .env å¼
 // ========================
 function readEnvValue(key) {
-  // 批注 2026-07-30：Railway Variables 是云端部署的权威配置源；
-  // 容器内 .env 只作兜底，避免管理页保存出的临时文件覆盖平台变量。
+  // æ¹æ³¨ 2026-07-30ï¼Railway Variables æ¯äºç«¯é¨ç½²çæå¨éç½®æºï¼
+  // å®¹å¨å .env åªä½ååºï¼é¿åç®¡çé¡µä¿å­åºçä¸´æ¶æä»¶è¦çå¹³å°åéã
   if (IS_RAILWAY_RUNTIME && process.env[key]) return process.env[key];
   try {
     const envContent = fs.readFileSync(ENV_FILE, "utf-8");
@@ -807,8 +808,8 @@ function readDiaryEntries(limit = 20) {
   const dir = diaryDirectoryPath();
   try {
     if (!fs.existsSync(dir)) return [];
-    // 批注 2026-07-15：管理页只读展示 wake-up 生成的本地日记；
-    // 只读取 DIARY_DIR 下的 .md 文件，避免把任意路径内容暴露到 admin 页面。
+    // æ¹æ³¨ 2026-07-15ï¼ç®¡çé¡µåªè¯»å±ç¤º wake-up çæçæ¬å°æ¥è®°ï¼
+    // åªè¯»å DIARY_DIR ä¸ç .md æä»¶ï¼é¿åæä»»æè·¯å¾åå®¹æ´é²å° admin é¡µé¢ã
     return fs.readdirSync(dir)
       .filter(name => /^[^/\\]+\.md$/i.test(name))
       .sort((a, b) => b.localeCompare(a))
@@ -820,7 +821,7 @@ function readDiaryEntries(limit = 20) {
         return { name, updated_at: stat.mtime.toISOString(), content };
       });
   } catch (err) {
-    return [{ name: "读取日记失败", updated_at: new Date().toISOString(), content: err.message || String(err) }];
+    return [{ name: "è¯»åæ¥è®°å¤±è´¥", updated_at: new Date().toISOString(), content: err.message || String(err) }];
   }
 }
 
@@ -846,18 +847,18 @@ function basicAuth(req, reply, done) {
 }
 
 // ========================
-// 管理页面 GET /admin
+// ç®¡çé¡µé¢ GET /admin
 // ========================
 app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
   const serverUptime = Math.floor(process.uptime());
   const wakeUpStatus = wakeUpLastHeartbeat
-    ? `在线（上次心跳: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}）`
-    : "离线或未启动";
+    ? `å¨çº¿ï¼ä¸æ¬¡å¿è·³: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}ï¼`
+    : "ç¦»çº¿ææªå¯å¨";
 
   const currentUrl = readEnvValue("TARGET_API_URL");
   const currentModel = readEnvValue("MODEL_NAME");
   const currentIcon = readEnvValue("CUSTOM_ICON_URL");
-  const gatewayKeyStatus = readEnvValue("GATEWAY_API_KEY") ? "已配置" : "未配置";
+  const gatewayKeyStatus = readEnvValue("GATEWAY_API_KEY") ? "å·²éç½®" : "æªéç½®";
   const wakeConfig = {
     dayWakeAfter: readEnvValueOrDefault("DAY_WAKE_AFTER_MINUTES", "60"),
     nightWakeAfter: readEnvValueOrDefault("NIGHT_WAKE_AFTER_MINUTES", "120"),
@@ -884,11 +885,11 @@ app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
         <pre>${escapeHtml(entry.content)}</pre>
       </details>
     `).join("")
-    : `<div class="diary-empty">还没有日记。模型在 wake-up 回复里输出 [DIARY]...[/DIARY] 后会保存到这里。</div>`;
+    : `<div class="diary-empty">è¿æ²¡ææ¥è®°ãæ¨¡åå¨ wake-up åå¤éè¾åº [DIARY]...[/DIARY] åä¼ä¿å­å°è¿éã</div>`;
 
   const authToken = Buffer.from(`${process.env.ADMIN_USER}:${process.env.ADMIN_PASSWORD}`).toString("base64");
   const runtimeConfigNotice = IS_RAILWAY_RUNTIME
-    ? `<div class="hint">Railway 检测到：此页面保存的是当前容器的 .env。Railway Variables 会优先提供运行时配置，且未挂载 Volume 的文件会在重新部署后丢失；请在 Railway Variables 修改唤醒数值并重新部署。</div>`
+    ? `<div class="hint">Railway æ£æµå°ï¼æ­¤é¡µé¢ä¿å­çæ¯å½åå®¹å¨ç .envãRailway Variables ä¼ä¼åæä¾è¿è¡æ¶éç½®ï¼ä¸æªæè½½ Volume çæä»¶ä¼å¨éæ°é¨ç½²åä¸¢å¤±ï¼è¯·å¨ Railway Variables ä¿®æ¹å¤éæ°å¼å¹¶éæ°é¨ç½²ã</div>`
     : "";
 
   const presets = loadPresets();
@@ -900,8 +901,8 @@ const html = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HEARTBEAT · Runtime</title>
-  <!-- 引入思源宋体 -->
+  <title>HEARTBEAT Â· Runtime</title>
+  <!-- å¼å¥ææºå®ä½ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1105,7 +1106,7 @@ const html = `<!DOCTYPE html>
       opacity: 0.7;
     }
 
-    /* 预设区域 */
+    /* é¢è®¾åºå */
     .presets-box {
       background: rgba(255, 250, 252, 0.5);
       backdrop-filter: blur(8px);
@@ -1323,7 +1324,7 @@ const html = `<!DOCTYPE html>
       line-height: 1.6;
     }
 
-    /* 加载动画 */
+    /* å è½½å¨ç» */
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1345,10 +1346,10 @@ const html = `<!DOCTYPE html>
 <body>
   <div class="container">
     <h2>HEARTBEAT</h2>
-    <div class="subtitle">Runtime · AI Residency</div>
+    <div class="subtitle">Runtime Â· AI Residency</div>
 
     <div class="status">
-      <p>Gateway <strong>运行中 (${serverUptime}秒)</strong></p>
+      <p>Gateway <strong>è¿è¡ä¸­ (${serverUptime}ç§)</strong></p>
       <p>Auto Wakeup <strong>${wakeUpStatus}</strong></p>
     </div>
     ${runtimeConfigNotice}
@@ -1358,96 +1359,96 @@ const html = `<!DOCTYPE html>
       ${diaryHtml}
     </div>
 
-    <!-- 预设方案 -->
+    <!-- é¢è®¾æ¹æ¡ -->
     <div class="presets-box">
-      <h3>预设方案</h3>
+      <h3>é¢è®¾æ¹æ¡</h3>
       <div class="preset-list" id="presetList"></div>
       <div class="add-preset">
-        <strong>保存当前配置为新预设</strong>
-        <input id="presetName" placeholder="预设名称，例如：DeepSeek / Claude">
-        <button onclick="savePreset()">保存为预设</button>
+        <strong>ä¿å­å½åéç½®ä¸ºæ°é¢è®¾</strong>
+        <input id="presetName" placeholder="é¢è®¾åç§°ï¼ä¾å¦ï¼DeepSeek / Claude">
+        <button onclick="savePreset()">ä¿å­ä¸ºé¢è®¾</button>
       </div>
     </div>
 
-    <!-- 配置表单 -->
+    <!-- éç½®è¡¨å -->
     <div class="config-box">
       <form id="configForm" onsubmit="saveConfig(event)">
         <label>API URL</label>
         <input name="target_url" id="f_url" value="${escapeHtml(currentUrl)}">
         <label>API Key</label>
-        <input name="target_key" id="f_key" placeholder="留空不修改">
+        <input name="target_key" id="f_key" placeholder="çç©ºä¸ä¿®æ¹">
         <label>Gateway API Key</label>
-        <input name="gateway_api_key" id="f_gateway_key" placeholder="公网 /v1 鉴权 key，留空不修改">
-        <div class="hint">当前状态：${escapeHtml(gatewayKeyStatus)}。公开部署并开启 ALLOW_PUBLIC_API=true 时，Kelivo 的 API Key 请填写这个 Gateway API Key，不要填写上游 API Key。</div>
+        <input name="gateway_api_key" id="f_gateway_key" placeholder="å¬ç½ /v1 é´æ keyï¼çç©ºä¸ä¿®æ¹">
+        <div class="hint">å½åç¶æï¼${escapeHtml(gatewayKeyStatus)}ãå¬å¼é¨ç½²å¹¶å¼å¯ ALLOW_PUBLIC_API=true æ¶ï¼Kelivo ç API Key è¯·å¡«åè¿ä¸ª Gateway API Keyï¼ä¸è¦å¡«åä¸æ¸¸ API Keyã</div>
         <label>Model Name</label>
         <input name="model_name" id="f_model" value="${escapeHtml(currentModel)}">
         <label>Bark Key</label>
-        <input name="bark_key" id="f_bark" placeholder="留空不修改">
+        <input name="bark_key" id="f_bark" placeholder="çç©ºä¸ä¿®æ¹">
         <label>Bark Icon URL</label>
-        <input name="custom_icon" id="f_icon" value="${escapeHtml(currentIcon)}" placeholder="可选">
+        <input name="custom_icon" id="f_icon" value="${escapeHtml(currentIcon)}" placeholder="å¯é">
 
         <div class="section-title">Wake Settings</div>
         <div class="grid-2">
           <div>
-            <label>白天多久未回复后唤醒（分钟）</label>
+            <label>ç½å¤©å¤ä¹æªåå¤åå¤éï¼åéï¼</label>
             <input type="number" min="1" name="day_wake_after" id="f_day_wake_after" value="${escapeHtml(wakeConfig.dayWakeAfter)}">
           </div>
           <div>
-            <label>夜间多久未回复后唤醒（分钟）</label>
+            <label>å¤é´å¤ä¹æªåå¤åå¤éï¼åéï¼</label>
             <input type="number" min="1" name="night_wake_after" id="f_night_wake_after" value="${escapeHtml(wakeConfig.nightWakeAfter)}">
           </div>
           <div>
-            <label>白天检查间隔（分钟）</label>
+            <label>ç½å¤©æ£æ¥é´éï¼åéï¼</label>
             <input type="number" min="1" name="day_check_interval" id="f_day_check_interval" value="${escapeHtml(wakeConfig.dayCheckInterval)}">
           </div>
           <div>
-            <label>夜间检查间隔（分钟）</label>
+            <label>å¤é´æ£æ¥é´éï¼åéï¼</label>
             <input type="number" min="1" name="night_check_interval" id="f_night_check_interval" value="${escapeHtml(wakeConfig.nightCheckInterval)}">
           </div>
           <div>
-            <label>白天开始小时</label>
+            <label>ç½å¤©å¼å§å°æ¶</label>
             <input type="number" min="0" max="23" name="wake_day_start_hour" id="f_wake_day_start_hour" value="${escapeHtml(wakeConfig.dayStartHour)}">
           </div>
           <div>
-            <label>白天结束小时</label>
+            <label>ç½å¤©ç»æå°æ¶</label>
             <input type="number" min="1" max="24" name="wake_day_end_hour" id="f_wake_day_end_hour" value="${escapeHtml(wakeConfig.dayEndHour)}">
           </div>
         </div>
 
         <div class="section-title">Weather</div>
-        <label>天气注入</label>
+        <label>å¤©æ°æ³¨å¥</label>
         <select name="weather_enabled" id="f_weather_enabled">
-          <option value="false" ${weatherConfig.enabled === "true" ? "" : "selected"}>关闭</option>
-          <option value="true" ${weatherConfig.enabled === "true" ? "selected" : ""}>开启</option>
+          <option value="false" ${weatherConfig.enabled === "true" ? "" : "selected"}>å³é­</option>
+          <option value="true" ${weatherConfig.enabled === "true" ? "selected" : ""}>å¼å¯</option>
         </select>
-        <label>位置名称</label>
-        <input name="weather_location_name" id="f_weather_location_name" value="${escapeHtml(weatherConfig.locationName)}" placeholder="例如：Beijing">
+        <label>ä½ç½®åç§°</label>
+        <input name="weather_location_name" id="f_weather_location_name" value="${escapeHtml(weatherConfig.locationName)}" placeholder="ä¾å¦ï¼Beijing">
         <div class="grid-2">
           <div>
-            <label>纬度 Latitude</label>
-            <input name="weather_lat" id="f_weather_lat" value="${escapeHtml(weatherConfig.lat)}" placeholder="例如：39.9042">
+            <label>çº¬åº¦ Latitude</label>
+            <input name="weather_lat" id="f_weather_lat" value="${escapeHtml(weatherConfig.lat)}" placeholder="ä¾å¦ï¼39.9042">
           </div>
           <div>
-            <label>经度 Longitude</label>
-            <input name="weather_lon" id="f_weather_lon" value="${escapeHtml(weatherConfig.lon)}" placeholder="例如：116.4074">
+            <label>ç»åº¦ Longitude</label>
+            <input name="weather_lon" id="f_weather_lon" value="${escapeHtml(weatherConfig.lon)}" placeholder="ä¾å¦ï¼116.4074">
           </div>
         </div>
-        <label>单位</label>
+        <label>åä½</label>
         <select name="weather_units" id="f_weather_units">
-          <option value="metric" ${weatherConfig.units === "fahrenheit" ? "" : "selected"}>摄氏度 / km/h</option>
-          <option value="fahrenheit" ${weatherConfig.units === "fahrenheit" ? "selected" : ""}>华氏度 / mph</option>
+          <option value="metric" ${weatherConfig.units === "fahrenheit" ? "" : "selected"}>ææ°åº¦ / km/h</option>
+          <option value="fahrenheit" ${weatherConfig.units === "fahrenheit" ? "selected" : ""}>åæ°åº¦ / mph</option>
         </select>
-        <div class="hint">天气使用 Open-Meteo 免费接口，不需要 API Key；只有开启后才会按你填写的经纬度读取天气。</div>
-        <button type="submit" class="save">保存配置</button>
+        <div class="hint">å¤©æ°ä½¿ç¨ Open-Meteo åè´¹æ¥å£ï¼ä¸éè¦ API Keyï¼åªæå¼å¯åæä¼æä½ å¡«åçç»çº¬åº¦è¯»åå¤©æ°ã</div>
+        <button type="submit" class="save">ä¿å­éç½®</button>
       </form>
     </div>
 
-    <button onclick="restartServices()" class="restart">一键重启所有服务</button>
-    <div class="note">修改配置后先保存，再点重启按钮生效</div>
+    <button onclick="restartServices()" class="restart">ä¸é®éå¯æææå¡</button>
+    <div class="note">ä¿®æ¹éç½®ååä¿å­ï¼åç¹éå¯æé®çæ</div>
   </div>
 
   <script>
-    // ====== 以下脚本保持不变 ======
+    // ====== ä»¥ä¸èæ¬ä¿æä¸å ======
     const AUTH_HEADER = ${authHeaderJson};
     let presets = ${presetsJson};
 
@@ -1463,13 +1464,13 @@ const html = `<!DOCTYPE html>
     function renderPresets() {
       const list = document.getElementById("presetList");
       if (!presets.length) {
-        list.innerHTML = '<div style="color:#aaa;font-size:12px;font-style:italic;">还没有预设，保存当前配置即可创建。</div>';
+        list.innerHTML = '<div style="color:#aaa;font-size:12px;font-style:italic;">è¿æ²¡æé¢è®¾ï¼ä¿å­å½åéç½®å³å¯åå»ºã</div>';
         return;
       }
       list.innerHTML = presets.map((p, idx) => {
         return '<div class="preset-item">' +
           '<button class="preset-btn" onclick="applyPreset(' + idx + ')">' + escapeHtmlText(p.name) + '<span>' + escapeHtmlText(p.model_name) + '</span></button>' +
-          '<button class="preset-del" onclick="deletePreset(' + idx + ')">删除</button>' +
+          '<button class="preset-del" onclick="deletePreset(' + idx + ')">å é¤</button>' +
         '</div>';
       }).join("");
     }
@@ -1505,7 +1506,7 @@ const html = `<!DOCTYPE html>
       };
 
       if (!payload.target_url || !payload.model_name) {
-        alert("请填写 API 地址和模型名称");
+        alert("è¯·å¡«å API å°ååæ¨¡ååç§°");
         return;
       }
 
@@ -1520,12 +1521,12 @@ const html = `<!DOCTYPE html>
           document.getElementById("f_key").value = "";
           document.getElementById("f_gateway_key").value = "";
           document.getElementById("f_bark").value = "";
-          alert("配置已保存，现在可以点击重启按钮让新配置生效。");
+          alert("éç½®å·²ä¿å­ï¼ç°å¨å¯ä»¥ç¹å»éå¯æé®è®©æ°éç½®çæã");
         } else {
-          alert("保存失败：" + (result.error || "未知错误"));
+          alert("ä¿å­å¤±è´¥ï¼" + (result.error || "æªç¥éè¯¯"));
         }
       } catch (e) {
-        alert("请求失败：" + e.message);
+        alert("è¯·æ±å¤±è´¥ï¼" + e.message);
       }
     }
 
@@ -1534,8 +1535,8 @@ const html = `<!DOCTYPE html>
       const target_url = document.getElementById("f_url").value.trim();
       const target_key = document.getElementById("f_key").value.trim();
       const model_name = document.getElementById("f_model").value.trim();
-      if (!name) { alert("请填写预设名称"); return; }
-      if (!target_url || !model_name) { alert("请先填写 API 地址和模型名称"); return; }
+      if (!name) { alert("è¯·å¡«åé¢è®¾åç§°"); return; }
+      if (!target_url || !model_name) { alert("è¯·åå¡«å API å°ååæ¨¡ååç§°"); return; }
 
       const resp = await fetch("/admin/presets/save", {
         method: "POST",
@@ -1550,15 +1551,15 @@ const html = `<!DOCTYPE html>
         else presets.push(entry);
         renderPresets();
         document.getElementById("presetName").value = "";
-        alert("预设已保存：" + name);
+        alert("é¢è®¾å·²ä¿å­ï¼" + name);
       } else {
-        alert("保存失败：" + (r.error || "未知错误"));
+        alert("ä¿å­å¤±è´¥ï¼" + (r.error || "æªç¥éè¯¯"));
       }
     }
 
     async function deletePreset(idx) {
       const p = presets[idx];
-      if (!confirm("删除预设「" + p.name + "」？")) return;
+      if (!confirm("å é¤é¢è®¾ã" + p.name + "ãï¼")) return;
       await fetch("/admin/presets/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": AUTH_HEADER },
@@ -1569,7 +1570,7 @@ const html = `<!DOCTYPE html>
     }
 
     async function restartServices() {
-      if (!confirm("确定要重启 Gateway 和 wake_up 吗？")) return;
+      if (!confirm("ç¡®å®è¦éå¯ Gateway å wake_up åï¼")) return;
       try {
         const resp = await fetch("/admin/restart", {
           method: "POST",
@@ -1578,13 +1579,13 @@ const html = `<!DOCTYPE html>
         });
         const result = await resp.json();
         if (result.success) {
-          alert("重启成功！页面稍后自动刷新。");
+          alert("éå¯æåï¼é¡µé¢ç¨åèªå¨å·æ°ã");
           setTimeout(() => location.reload(), 3000);
         } else {
-          alert("重启失败：" + (result.error || "未知错误"));
+          alert("éå¯å¤±è´¥ï¼" + (result.error || "æªç¥éè¯¯"));
         }
       } catch (e) {
-        alert("请求失败：" + e.message);
+        alert("è¯·æ±å¤±è´¥ï¼" + e.message);
       }
     }
 
@@ -1596,7 +1597,7 @@ const html = `<!DOCTYPE html>
   reply.type("text/html").send(html);
 });
 // ========================
-// 管理保存 POST /admin/save
+// ç®¡çä¿å­ POST /admin/save
 // ========================
 app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
   try {
@@ -1621,15 +1622,15 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
     } = req.body || {};
 
     if (!target_url || !model_name) {
-      return reply.code(400).send({ error: "target_url / model_name 必填" });
+      return reply.code(400).send({ error: "target_url / model_name å¿å¡«" });
     }
 
     const finalTargetKey = target_key || readEnvValue("TARGET_API_KEY");
     const finalGatewayKey = gateway_api_key || readEnvValue("GATEWAY_API_KEY");
     const finalBarkKey = bark_key || readEnvValue("BARK_KEY");
 
-    // 批注 2026-06-26：公开版把唤醒策略和天气信息开放到管理页；保存时做轻量校验，避免空值把运行中的唤醒节奏写坏。
-    // 批注 2026-07-15：GATEWAY_API_KEY 是公开 /v1 的客户端鉴权 key，不能和上游 TARGET_API_KEY 混在一起展示或返回。
+    // æ¹æ³¨ 2026-06-26ï¼å¬å¼çæå¤éç­ç¥åå¤©æ°ä¿¡æ¯å¼æ¾å°ç®¡çé¡µï¼ä¿å­æ¶åè½»éæ ¡éªï¼é¿åç©ºå¼æè¿è¡ä¸­çå¤éèå¥ååã
+    // æ¹æ³¨ 2026-07-15ï¼GATEWAY_API_KEY æ¯å¬å¼ /v1 çå®¢æ·ç«¯é´æ keyï¼ä¸è½åä¸æ¸¸ TARGET_API_KEY æ··å¨ä¸èµ·å±ç¤ºæè¿åã
     writeEnvUpdates({
       TARGET_API_URL: target_url,
       TARGET_API_KEY: finalTargetKey,
@@ -1651,7 +1652,7 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
       ADMIN_USER: readEnvValue("ADMIN_USER"),
       ADMIN_PASSWORD: readEnvValue("ADMIN_PASSWORD")
     });
-    console.log("\n✅ .env 已更新，可通过管理页重启服务\n");
+    console.log("\nâ .env å·²æ´æ°ï¼å¯éè¿ç®¡çé¡µéå¯æå¡\n");
 
     if (wantsJsonResponse(req)) {
       return reply.send({ success: true });
@@ -1659,11 +1660,11 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
 
     reply.type("text/html").send(`<!DOCTYPE html>
 <html lang="zh">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>已保存</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>å·²ä¿å­</title></head>
 <body style="text-align:center;font-family:-apple-system,sans-serif;padding:40px;">
-  <h2>✅ 配置已保存</h2>
-  <p>现在可以返回管理页，点击重启按钮让新配置生效。</p>
-  <a href="/admin">← 返回设置</a>
+  <h2>â éç½®å·²ä¿å­</h2>
+  <p>ç°å¨å¯ä»¥è¿åç®¡çé¡µï¼ç¹å»éå¯æé®è®©æ°éç½®çæã</p>
+  <a href="/admin">â è¿åè®¾ç½®</a>
 </body></html>`);
   } catch (err) {
     console.error(err);
@@ -1672,12 +1673,12 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 // ========================
-// 保存预设方案
+// ä¿å­é¢è®¾æ¹æ¡
 // ========================
 app.post("/admin/presets/save", { preHandler: basicAuth }, async (req, reply) => {
   const { name, target_url, target_key, model_name } = req.body || {};
   if (!name || !target_url || !model_name) {
-    return reply.code(400).send({ error: "name / target_url / model_name 必填" });
+    return reply.code(400).send({ error: "name / target_url / model_name å¿å¡«" });
   }
   const presets = loadPresets();
   const existing = presets.findIndex(p => p.name === name);
@@ -1689,7 +1690,7 @@ app.post("/admin/presets/save", { preHandler: basicAuth }, async (req, reply) =>
 });
 
 // ========================
-// 删除预设方案
+// å é¤é¢è®¾æ¹æ¡
 // ========================
 app.post("/admin/presets/delete", { preHandler: basicAuth }, async (req, reply) => {
   const { name } = req.body || {};
@@ -1699,7 +1700,7 @@ app.post("/admin/presets/delete", { preHandler: basicAuth }, async (req, reply) 
 });
 
 // ========================
-// 心跳接口
+// å¿è·³æ¥å£
 // ========================
 app.post("/internal/heartbeat", async (req, reply) => {
   wakeUpLastHeartbeat = Date.now();
@@ -1707,41 +1708,41 @@ app.post("/internal/heartbeat", async (req, reply) => {
 });
 
 // ========================
-// 管理页一键重启
+// ç®¡çé¡µä¸é®éå¯
 // ========================
 app.post("/admin/restart", { preHandler: basicAuth }, async (req, reply) => {
   const restartCommand = readRestartCommand();
 
-  // 立即回复，避免重启时连接中断
-  reply.send({ success: true, output: `重启指令已发送：${restartCommand}` });
+  // ç«å³åå¤ï¼é¿åéå¯æ¶è¿æ¥ä¸­æ­
+  reply.send({ success: true, output: `éå¯æä»¤å·²åéï¼${restartCommand}` });
   
-  // 稍后重启。默认只重启本项目的两个进程；可通过 RESTART_COMMAND 自定义。
+  // ç¨åéå¯ãé»è®¤åªéå¯æ¬é¡¹ç®çä¸¤ä¸ªè¿ç¨ï¼å¯éè¿ RESTART_COMMAND èªå®ä¹ã
   const { exec } = require("child_process");
   exec(restartCommand, (err, stdout, stderr) => {
     if (err) {
-      console.error("重启失败:", stderr);
+      console.error("éå¯å¤±è´¥:", stderr);
     } else {
-      console.log("服务已重启:", stdout);
+      console.log("æå¡å·²éå¯:", stdout);
     }
   });
 });
 
 // ========================
-// 测试 Bark
+// æµè¯ Bark
 // ========================
 app.get("/test-bark", async (req, reply) => {
   const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
-  appendSpecialEvent(`（${formattedTime} 刚刚给用户发了 Bark：这是一条测试推送。）`);
+  appendSpecialEvent(`ï¼${formattedTime} ååç»ç¨æ·åäº Barkï¼è¿æ¯ä¸æ¡æµè¯æ¨éãï¼`);
   reply.send({ success: true });
 });
 
 // ========================
-// 启动服务
+// å¯å¨æå¡
 // ========================
 app.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
-  console.log(`✅ Gateway 运行在 ${address}`);
+  console.log(`â Gateway è¿è¡å¨ ${address}`);
 });
