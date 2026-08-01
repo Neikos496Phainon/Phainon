@@ -10,8 +10,9 @@ const {
   zonedWallTimeToDate
 } = require("./time_utils");
 
-const TIMELINE_PATH = path.join(__dirname, "enhanced_messages.json");
+const TIMELINE_PATH = path.join(DATA_DIR, "enhanced_messages.json");
 const PORT = Number(process.env.PORT) || 3000;
+const DATA_DIR = process.env.DATA_DIR || __dirname;
 const GATEWAY_BASE_URL = (process.env.GATEWAY_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const GATEWAY_URL = `${GATEWAY_BASE_URL}/internal/wake-event`;
 const HEARTBEAT_URL = `${GATEWAY_BASE_URL}/internal/heartbeat`;
@@ -46,7 +47,7 @@ function getDiaryTimeString(date = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-// 批注 2026-07-11：日记只接受模型显式输出的 [DIARY] 块，避免把普通推送内容误写进本地日记。
+// æ¹æ³¨ 2026-07-11ï¼æ¥è®°åªæ¥åæ¨¡åæ¾å¼è¾åºç [DIARY] åï¼é¿åææ®éæ¨éåå®¹è¯¯åè¿æ¬å°æ¥è®°ã
 function extractDiaryFromResponse(text) {
   const diaryBlocks = [];
   const remainingText = String(text || "").replace(/\[DIARY\]([\s\S]*?)\[\/DIARY\]/gi, (_, content) => {
@@ -62,7 +63,7 @@ function extractDiaryFromResponse(text) {
 
 function appendDiaryEntry(content) {
   if (!readBooleanEnv("DIARY_ENABLED", true)) {
-    console.log("模型写了日记，但 DIARY_ENABLED=false，本次不保存");
+    console.log("æ¨¡ååäºæ¥è®°ï¼ä½ DIARY_ENABLED=falseï¼æ¬æ¬¡ä¸ä¿å­");
     return false;
   }
 
@@ -73,17 +74,17 @@ function appendDiaryEntry(content) {
   const diaryFile = path.join(DIARY_DIR_PATH, `${getDiaryDateString()}.md`);
   const entry = `\n\n## ${getDiaryTimeString()}\n\n${cleanContent}\n`;
   fs.appendFileSync(diaryFile, entry, "utf-8");
-  console.log(`已保存日记：${diaryFile}`);
+  console.log(`å·²ä¿å­æ¥è®°ï¼${diaryFile}`);
   return true;
 }
 
-// 批注 2026-07-11：推送层扩展为 Bark/ntfy；默认仍走 Bark，保护旧部署不改 .env 也能继续运行。
+// æ¹æ³¨ 2026-07-11ï¼æ¨éå±æ©å±ä¸º Bark/ntfyï¼é»è®¤ä»èµ° Barkï¼ä¿æ¤æ§é¨ç½²ä¸æ¹ .env ä¹è½ç»§ç»­è¿è¡ã
 async function sendPushNotification({ title, body }) {
   const provider = (process.env.PUSH_PROVIDER || "bark").trim().toLowerCase();
 
   if (provider === "ntfy") {
     const topic = String(process.env.NTFY_TOPIC || "").trim();
-    if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC 未配置" };
+    if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC æªéç½®" };
 
     const server = (process.env.NTFY_SERVER_URL || "https://ntfy.sh").replace(/\/+$/, "");
     const headers = {
@@ -111,11 +112,11 @@ async function sendPushNotification({ title, body }) {
   }
 
   if (provider !== "bark") {
-    return { ok: false, providerLabel: provider || "未知渠道", reason: `不支持的 PUSH_PROVIDER：${provider}` };
+    return { ok: false, providerLabel: provider || "æªç¥æ¸ é", reason: `ä¸æ¯æç PUSH_PROVIDERï¼${provider}` };
   }
 
   if (!process.env.BARK_KEY) {
-    return { ok: false, providerLabel: "Bark", reason: "Bark Key 未配置" };
+    return { ok: false, providerLabel: "Bark", reason: "Bark Key æªéç½®" };
   }
 
   const barkPayload = {
@@ -176,8 +177,8 @@ function normalizeContentToText(content) {
         if (!part || typeof part !== "object") return "";
         const type = typeof part.type === "string" ? part.type.toLowerCase() : "";
         if (type === "text" || type === "input_text") return part.text || part.content || "";
-        if (part.image_url || type.includes("image")) return "[图片]";
-        if (part.file || type.includes("file")) return "[文件]";
+        if (part.image_url || type.includes("image")) return "[å¾ç]";
+        if (part.file || type.includes("file")) return "[æä»¶]";
         return "";
       })
       .filter(Boolean)
@@ -186,11 +187,11 @@ function normalizeContentToText(content) {
 
   if (content && typeof content === "object") {
     const type = typeof content.type === "string" ? content.type.toLowerCase() : "";
-    if (content.image_url || type.includes("image")) return "[图片]";
-    if (content.file || type.includes("file")) return "[文件]";
+    if (content.image_url || type.includes("image")) return "[å¾ç]";
+    if (content.file || type.includes("file")) return "[æä»¶]";
   }
 
-  return "[非文本内容]";
+  return "[éææ¬åå®¹]";
 }
 
 function summarizeWakeMessages(messages = []) {
@@ -206,29 +207,29 @@ function summarizeWakeMessages(messages = []) {
 
 function weatherCodeText(code) {
   const table = {
-    0: "晴朗",
-    1: "大致晴朗",
-    2: "局部多云",
-    3: "阴天",
-    45: "有雾",
-    48: "雾凇",
-    51: "小毛毛雨",
-    53: "中等毛毛雨",
-    55: "较强毛毛雨",
-    61: "小雨",
-    63: "中雨",
-    65: "大雨",
-    71: "小雪",
-    73: "中雪",
-    75: "大雪",
-    80: "阵雨",
-    81: "较强阵雨",
-    82: "强阵雨",
-    95: "雷暴",
-    96: "雷暴伴小冰雹",
-    99: "雷暴伴大冰雹"
+    0: "æ´æ",
+    1: "å¤§è´æ´æ",
+    2: "å±é¨å¤äº",
+    3: "é´å¤©",
+    45: "æé¾",
+    48: "é¾å",
+    51: "å°æ¯æ¯é¨",
+    53: "ä¸­ç­æ¯æ¯é¨",
+    55: "è¾å¼ºæ¯æ¯é¨",
+    61: "å°é¨",
+    63: "ä¸­é¨",
+    65: "å¤§é¨",
+    71: "å°éª",
+    73: "ä¸­éª",
+    75: "å¤§éª",
+    80: "éµé¨",
+    81: "è¾å¼ºéµé¨",
+    82: "å¼ºéµé¨",
+    95: "é·æ´",
+    96: "é·æ´ä¼´å°å°é¹",
+    99: "é·æ´ä¼´å¤§å°é¹"
   };
-  return table[code] || `天气代码 ${code}`;
+  return table[code] || `å¤©æ°ä»£ç  ${code}`;
 }
 
 async function fetchWeatherContext() {
@@ -237,11 +238,11 @@ async function fetchWeatherContext() {
   const lat = Number(process.env.WEATHER_LAT);
   const lon = Number(process.env.WEATHER_LON);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    console.log("已启用 WEATHER_ENABLED，但 WEATHER_LAT / WEATHER_LON 未正确配置，跳过天气注入");
+    console.log("å·²å¯ç¨ WEATHER_ENABLEDï¼ä½ WEATHER_LAT / WEATHER_LON æªæ­£ç¡®éç½®ï¼è·³è¿å¤©æ°æ³¨å¥");
     return "";
   }
 
-  const location = process.env.WEATHER_LOCATION_NAME || "当前位置";
+  const location = process.env.WEATHER_LOCATION_NAME || "å½åä½ç½®";
   const units = (process.env.WEATHER_UNITS || "metric").trim().toLowerCase();
   const temperatureUnit = units === "fahrenheit" ? "fahrenheit" : "celsius";
   const windSpeedUnit = units === "fahrenheit" ? "mph" : "kmh";
@@ -265,19 +266,19 @@ async function fetchWeatherContext() {
     const daily = data.daily || {};
     const unitsInfo = data.current_units || {};
     const lines = [
-      "## 天气信息",
-      `- 位置：${location}`,
-      `- 当前：${weatherCodeText(current.weather_code)}，${current.temperature_2m}${unitsInfo.temperature_2m || "°C"}，体感 ${current.apparent_temperature}${unitsInfo.apparent_temperature || "°C"}`,
-      `- 湿度：${current.relative_humidity_2m}${unitsInfo.relative_humidity_2m || "%"}`,
-      `- 降雨：${current.precipitation}${unitsInfo.precipitation || "mm"}`,
-      `- 风速：${current.wind_speed_10m}${unitsInfo.wind_speed_10m || ""}`
+      "## å¤©æ°ä¿¡æ¯",
+      `- ä½ç½®ï¼${location}`,
+      `- å½åï¼${weatherCodeText(current.weather_code)}ï¼${current.temperature_2m}${unitsInfo.temperature_2m || "Â°C"}ï¼ä½æ ${current.apparent_temperature}${unitsInfo.apparent_temperature || "Â°C"}`,
+      `- æ¹¿åº¦ï¼${current.relative_humidity_2m}${unitsInfo.relative_humidity_2m || "%"}`,
+      `- éé¨ï¼${current.precipitation}${unitsInfo.precipitation || "mm"}`,
+      `- é£éï¼${current.wind_speed_10m}${unitsInfo.wind_speed_10m || ""}`
     ];
     if (Array.isArray(daily.sunrise) && Array.isArray(daily.sunset)) {
-      lines.push(`- 日出/日落：${daily.sunrise[0]} / ${daily.sunset[0]}`);
+      lines.push(`- æ¥åº/æ¥è½ï¼${daily.sunrise[0]} / ${daily.sunset[0]}`);
     }
     return lines.join("\n");
   } catch (err) {
-    console.log("天气注入失败，跳过本次天气信息:", err.message);
+    console.log("å¤©æ°æ³¨å¥å¤±è´¥ï¼è·³è¿æ¬æ¬¡å¤©æ°ä¿¡æ¯:", err.message);
     return "";
   } finally {
     clearTimeout(timeout);
@@ -286,19 +287,19 @@ async function fetchWeatherContext() {
 
 function loadTimelineMessages() {
   if (!fs.existsSync(TIMELINE_PATH)) {
-    console.log("未找到 enhanced_messages.json");
+    console.log("æªæ¾å° enhanced_messages.json");
     return null;
   }
 
   try {
     const parsed = JSON.parse(fs.readFileSync(TIMELINE_PATH, "utf-8"));
     if (!Array.isArray(parsed)) {
-      console.log("enhanced_messages.json 格式错误：顶层不是数组");
+      console.log("enhanced_messages.json æ ¼å¼éè¯¯ï¼é¡¶å±ä¸æ¯æ°ç»");
       return null;
     }
     return parsed;
   } catch (err) {
-    console.error("读取 enhanced_messages.json 失败:", err.message);
+    console.error("è¯»å enhanced_messages.json å¤±è´¥:", err.message);
     return null;
   }
 }
@@ -323,7 +324,7 @@ function shouldWake(lastUserTime) {
 
 function parseTimelineTimestamp(value) {
   const text = String(value || "");
-  const match = text.match(/（?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:：](\d{2})/);
+  const match = text.match(/ï¼?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:ï¼](\d{2})/);
   if (!match) return null;
   const [, yyyy, , month, day, hour, minute] = match;
   return zonedWallTimeToDate({ year: yyyy, month, day, hour, minute }, TIME_ZONE);
@@ -334,8 +335,8 @@ function getLastUserTime(messages) {
   for (const msg of reversed) {
     if (msg.role === "user") {
       const content = normalizeContentToText(msg.content);
-      // 批注 2026-07-15：兼容 Kelivo 时间前缀 "YYYY-MM-DDHH:mm"；
-      // 旧的 "YYYY-MM-DD HH:mm" 仍然可用，避免无空格时间导致 wake-up 误判没有用户时间。
+      // æ¹æ³¨ 2026-07-15ï¼å¼å®¹ Kelivo æ¶é´åç¼ "YYYY-MM-DDHH:mm"ï¼
+      // æ§ç "YYYY-MM-DD HH:mm" ä»ç¶å¯ç¨ï¼é¿åæ ç©ºæ ¼æ¶é´å¯¼è´ wake-up è¯¯å¤æ²¡æç¨æ·æ¶é´ã
       const parsed = parseTimelineTimestamp(content);
       if (parsed) return parsed;
     }
@@ -348,7 +349,7 @@ function stripPosition(messages) {
 }
 
 function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
-  // 优先读取独立的提示词文件（推荐方式）
+  // ä¼åè¯»åç¬ç«çæç¤ºè¯æä»¶ï¼æ¨èæ¹å¼ï¼
   const promptFile = path.join(__dirname, "wake_prompt.txt");
   if (fs.existsSync(promptFile)) {
     const template = fs.readFileSync(promptFile, "utf-8");
@@ -359,7 +360,7 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
       .replace(/\$\{weather\}/g, weatherContext);
   }
 
-  // 如果文件不存在，尝试从环境变量读取（兼容旧配置）
+  // å¦ææä»¶ä¸å­å¨ï¼å°è¯ä»ç¯å¢åéè¯»åï¼å¼å®¹æ§éç½®ï¼
   if (process.env.WAKE_PROMPT_TEMPLATE) {
     return process.env.WAKE_PROMPT_TEMPLATE
       .replace(/\\n/g, '\n')
@@ -369,28 +370,28 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
       .replace(/\$\{weather\}/g, weatherContext);
   }
 
-  // 默认理智版本（开源通用），可自行修改提示词
+  // é»è®¤çæºçæ¬ï¼å¼æºéç¨ï¼ï¼å¯èªè¡ä¿®æ¹æç¤ºè¯
   return `
-## 最高优先级规则
-1. 这是一次后台自动唤醒，不是用户发起的对话。你没有收到任何新消息。
-2. 你的唯一任务是决定是否主动联系用户。不能生成对话回复。
-3. 输出格式必须严格遵守以下二选一。
+## æé«ä¼åçº§è§å
+1. è¿æ¯ä¸æ¬¡åå°èªå¨å¤éï¼ä¸æ¯ç¨æ·åèµ·çå¯¹è¯ãä½ æ²¡ææ¶å°ä»»ä½æ°æ¶æ¯ã
+2. ä½ çå¯ä¸ä»»å¡æ¯å³å®æ¯å¦ä¸»å¨èç³»ç¨æ·ãä¸è½çæå¯¹è¯åå¤ã
+3. è¾åºæ ¼å¼å¿é¡»ä¸¥æ ¼éµå®ä»¥ä¸äºéä¸ã
 
-## 唤醒信息
-- 当前时间：${currentTime}
-- 距离用户最后一条消息：${diffMinutes} 分钟
+## å¤éä¿¡æ¯
+- å½åæ¶é´ï¼${currentTime}
+- è·ç¦»ç¨æ·æåä¸æ¡æ¶æ¯ï¼${diffMinutes} åé
 ${weatherContext ? `\n${weatherContext}\n` : ""}
 
-## 输出格式
-- 如果想联系用户，直接写你想说的话。系统会自动打包成手机推送发送。可以是一句话，也可以第一行作为标题、第二行作为正文。
-- 如果不想联系，只输出：[NO_ACTION]，可附带简短原因（10字以内）。
-- 如果你想写日记，可以额外输出 [DIARY]...[/DIARY]。只有想写时才写，不必每次都写。
+## è¾åºæ ¼å¼
+- å¦ææ³èç³»ç¨æ·ï¼ç´æ¥åä½ æ³è¯´çè¯ãç³»ç»ä¼èªå¨æåæææºæ¨éåéãå¯ä»¥æ¯ä¸å¥è¯ï¼ä¹å¯ä»¥ç¬¬ä¸è¡ä½ä¸ºæ é¢ãç¬¬äºè¡ä½ä¸ºæ­£æã
+- å¦æä¸æ³èç³»ï¼åªè¾åºï¼[NO_ACTION]ï¼å¯éå¸¦ç®ç­åå ï¼10å­ä»¥åï¼ã
+- å¦æä½ æ³åæ¥è®°ï¼å¯ä»¥é¢å¤è¾åº [DIARY]...[/DIARY]ãåªææ³åæ¶æåï¼ä¸å¿æ¯æ¬¡é½åã
 `;
 }
 
 async function runWakeUp() {
   console.log("\n==========================");
-  console.log("开始自动唤醒");
+  console.log("å¼å§èªå¨å¤é");
   console.log("==========================\n");
 
   const messages = loadTimelineMessages();
@@ -398,7 +399,7 @@ async function runWakeUp() {
 
   const lastUserTime = getLastUserTime(messages);
   if (!lastUserTime) {
-    console.log("未找到用户时间");
+    console.log("æªæ¾å°ç¨æ·æ¶é´");
     return;
   }
 
@@ -406,7 +407,7 @@ async function runWakeUp() {
   const diffMinutes = Math.floor((now - lastUserTime) / 1000 / 60);
 
   if (!shouldWake(lastUserTime)) {
-    console.log("\n暂不需要唤醒\n");
+    console.log("\næä¸éè¦å¤é\n");
     return;
   }
 
@@ -418,10 +419,10 @@ async function runWakeUp() {
     .filter(msg => msg.role !== "system")
     .filter(msg => {
       const c = normalizeContentToText(msg.content);
-      return !c.includes("<memories>") && !c.includes("记忆库使用策略");
+      return !c.includes("<memories>") && !c.includes("è®°å¿åºä½¿ç¨ç­ç¥");
     })
     .map(msg => {
-      const userDisplay = process.env.USER_DISPLAY_NAME || "用户";
+      const userDisplay = process.env.USER_DISPLAY_NAME || "ç¨æ·";
       const aiDisplay = process.env.AI_DISPLAY_NAME || "AI";
       const role = msg.role === "user" ? userDisplay : aiDisplay;
       let content = normalizeContentToText(msg.content);
@@ -443,29 +444,29 @@ async function runWakeUp() {
       content: [wakePrompt, cleanSP].filter(Boolean).join("\n\n")
     },
     {
-      // 批注 2026-07-15：Claude/部分 New API 适配器会把 system 抽成独立字段；
-      // 唤醒请求如果全是 system，上游 messages 会变空，因此最近记录必须作为 user 任务输入发送。
+      // æ¹æ³¨ 2026-07-15ï¼Claude/é¨å New API ééå¨ä¼æ system æ½æç¬ç«å­æ®µï¼
+      // å¤éè¯·æ±å¦æå¨æ¯ systemï¼ä¸æ¸¸ messages ä¼åç©ºï¼å æ­¤æè¿è®°å½å¿é¡»ä½ä¸º user ä»»å¡è¾å¥åéã
       role: "user",
-      content: `以下是你与用户最近的聊天记录，仅供回忆和参考。
+      content: `ä»¥ä¸æ¯ä½ ä¸ç¨æ·æè¿çèå¤©è®°å½ï¼ä»ä¾åå¿ååèã
 
-这些内容不是正在发生的实时对话。
-用户并没有给你发消息。
+è¿äºåå®¹ä¸æ¯æ­£å¨åççå®æ¶å¯¹è¯ã
+ç¨æ·å¹¶æ²¡æç»ä½ åæ¶æ¯ã
 
-你现在处于后台自主唤醒状态。
+ä½ ç°å¨å¤äºåå°èªä¸»å¤éç¶æã
 
-最近记录：
+æè¿è®°å½ï¼
 
 ${historyText}`
     }
   ];
 
-  // 批注 2026-07-15：wake-up prompt 会包含最近聊天记录；
-  // 默认日志只写摘要，避免公开部署时把完整上下文刷进 pm2 日志。
+  // æ¹æ³¨ 2026-07-15ï¼wake-up prompt ä¼åå«æè¿èå¤©è®°å½ï¼
+  // é»è®¤æ¥å¿åªåæè¦ï¼é¿åå¬å¼é¨ç½²æ¶æå®æ´ä¸ä¸æå·è¿ pm2 æ¥å¿ã
   console.log("\n===== WAKE MESSAGES SUMMARY =====\n");
   console.log(JSON.stringify(summarizeWakeMessages(wakeMessages)));
 
   if (!process.env.TARGET_API_URL || !process.env.TARGET_API_KEY || !process.env.MODEL_NAME) {
-    console.log("缺少 TARGET_API_URL / TARGET_API_KEY / MODEL_NAME，跳过本次唤醒");
+    console.log("ç¼ºå° TARGET_API_URL / TARGET_API_KEY / MODEL_NAMEï¼è·³è¿æ¬æ¬¡å¤é");
     return;
   }
 
@@ -489,10 +490,10 @@ ${historyText}`
   try {
     data = JSON.parse(responseText);
   } catch {
-    throw new Error(`模型返回的不是 JSON（HTTP ${response.status}）：${responseText.slice(0, 300)}`);
+    throw new Error(`æ¨¡åè¿åçä¸æ¯ JSONï¼HTTP ${response.status}ï¼ï¼${responseText.slice(0, 300)}`);
   }
   if (!response.ok) {
-    throw new Error(`模型请求失败（HTTP ${response.status}）：${responseText.slice(0, 300)}`);
+    throw new Error(`æ¨¡åè¯·æ±å¤±è´¥ï¼HTTP ${response.status}ï¼ï¼${responseText.slice(0, 300)}`);
   }
 
   const rawAiText = normalizeContentToText(data.choices?.[0]?.message?.content).trim();
@@ -506,28 +507,28 @@ ${historyText}`
   let eventContent;
 
   if (!aiText) {
-    console.log("\nAI 未返回推送内容，本次不发送推送\n");
+    console.log("\nAI æªè¿åæ¨éåå®¹ï¼æ¬æ¬¡ä¸åéæ¨é\n");
     eventContent = diarySaved
-      ? `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：只写日记）`
-      : `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：模型空回复）`;
-  // 判断 AI 是否明确要静默
+      ? `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼åªåæ¥è®°ï¼`
+      : `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼æ¨¡åç©ºåå¤ï¼`;
+  // å¤æ­ AI æ¯å¦æç¡®è¦éé»
   } else if (aiText.match(/^\[NO_ACTION\]\s*(.{0,20})?/)) {
     const noActionMatch = aiText.match(/^\[NO_ACTION\]\s*(.{0,20})?/);
-    // AI 选择不发送推送
-    console.log("\nAI 选择不发送推送\n");
+    // AI éæ©ä¸åéæ¨é
+    console.log("\nAI éæ©ä¸åéæ¨é\n");
     let reason = (noActionMatch[1] || "").trim();
-    if (reason.startsWith("原因：") || reason.startsWith("原因:")) {
-      reason = reason.replace(/^原因[：:]\s*/, "").trim();
+    if (reason.startsWith("åå ï¼") || reason.startsWith("åå :")) {
+      reason = reason.replace(/^åå [ï¼:]\s*/, "").trim();
     }
     eventContent = reason
-      ? `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：${reason}）`
-      : `（${getLocalTimeString()} 自动唤醒：本次未发送推送）`;
+      ? `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼${reason}ï¼`
+      : `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï¼`;
   } else {
-    // 没有 [NO_ACTION] 就视为想发推送
-    console.log("\nAI 选择发送推送\n");
+    // æ²¡æ [NO_ACTION] å°±è§ä¸ºæ³åæ¨é
+    console.log("\nAI éæ©åéæ¨é\n");
     let barkText = aiText;
 
-    // 如果 AI 还是写了 [BARK] ... [/BARK] 标签，就剥掉
+    // å¦æ AI è¿æ¯åäº [BARK] ... [/BARK] æ ç­¾ï¼å°±å¥æ
     const barkMatch = barkText.match(/\[BARK\]([\s\S]*?)\[\/BARK\]/);
     if (barkMatch) {
       barkText = barkMatch[1].trim();
@@ -536,43 +537,43 @@ ${historyText}`
       barkText = barkText.replace(/\s*\[\/BARK\]$/, "").trim();
     }
 
-    // 清洗“标题：”、“正文：”前缀（如果有）
+    // æ¸æ´âæ é¢ï¼âãâæ­£æï¼âåç¼ï¼å¦ææï¼
     barkText = barkText
-      .replace(/^标题[：:]\s*/gm, "")
-      .replace(/^正文[：:]\s*/gm, "");
+      .replace(/^æ é¢[ï¼:]\s*/gm, "")
+      .replace(/^æ­£æ[ï¼:]\s*/gm, "");
 
-    // 按行处理
+    // æè¡å¤ç
     const lines = barkText.split("\n").filter(line => line.trim() !== "");
 
     let title, body;
     if (lines.length === 0) {
-      console.log("\n推送内容清洗后为空，本次不发送推送\n");
-      eventContent = `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：推送内容为空）`;
+      console.log("\næ¨éåå®¹æ¸æ´åä¸ºç©ºï¼æ¬æ¬¡ä¸åéæ¨é\n");
+      eventContent = `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼æ¨éåå®¹ä¸ºç©ºï¼`;
     } else if (lines.length === 1) {
-      title = "来自AI";
+      title = "æ¥èªAI";
       body = lines[0].trim();
     } else if (lines.length === 2) {
       title = lines[0].trim();
       body = lines[1].trim();
     } else {
-      // ≥3 行：第一行标题，剩余用空格拼接成正文
+      // â¥3 è¡ï¼ç¬¬ä¸è¡æ é¢ï¼å©ä½ç¨ç©ºæ ¼æ¼æ¥ææ­£æ
       title = lines[0].trim();
       body = lines.slice(1).map(l => l.trim()).join(" ");
     }
 
     if (!eventContent) {
-      // 保护：截断过长正文，兼容 Bark 和 ntfy 的移动端展示。
+      // ä¿æ¤ï¼æªæ­è¿é¿æ­£æï¼å¼å®¹ Bark å ntfy çç§»å¨ç«¯å±ç¤ºã
       const safeBody = body.length > 500 ? body.substring(0, 497) + "..." : body;
-      // 若标题为空或以数字开头，加个前缀，可自行修改
-      let safeTitle = title || "来自伴侣";
-      if (/^\d/.test(safeTitle)) safeTitle = "来自伴侣｜" + safeTitle;
+      // è¥æ é¢ä¸ºç©ºæä»¥æ°å­å¼å¤´ï¼å ä¸ªåç¼ï¼å¯èªè¡ä¿®æ¹
+      let safeTitle = title || "æ¥èªä¼´ä¾£";
+      if (/^\d/.test(safeTitle)) safeTitle = "æ¥èªä¼´ä¾£ï½" + safeTitle;
 
       const pushResult = await sendPushNotification({ title: safeTitle, body: safeBody });
       if (!pushResult.ok) {
-        console.log(`\n${pushResult.providerLabel} 推送失败，本次不发送推送\n`);
-        eventContent = `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：${pushResult.providerLabel} 推送失败：${pushResult.reason}）`;
+        console.log(`\n${pushResult.providerLabel} æ¨éå¤±è´¥ï¼æ¬æ¬¡ä¸åéæ¨é\n`);
+        eventContent = `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼${pushResult.providerLabel} æ¨éå¤±è´¥ï¼${pushResult.reason}ï¼`;
       } else {
-        eventContent = `（${getLocalTimeString()} 刚刚给用户发了${pushResult.providerLabel}推送：${safeTitle}｜${safeBody}）`;
+        eventContent = `ï¼${getLocalTimeString()} ååç»ç¨æ·åäº${pushResult.providerLabel}æ¨éï¼${safeTitle}ï½${safeBody}ï¼`;
       }
     }
   }
@@ -584,37 +585,37 @@ ${historyText}`
       body: JSON.stringify({ content: eventContent })
     });
     if (!eventResponse.ok) {
-      throw new Error(`Gateway 返回 HTTP ${eventResponse.status}`);
+      throw new Error(`Gateway è¿å HTTP ${eventResponse.status}`);
     }
-    console.log("\n已通过 Gateway 记录唤醒事件\n");
+    console.log("\nå·²éè¿ Gateway è®°å½å¤éäºä»¶\n");
   } catch (err) {
-    console.error("\n记录唤醒事件失败（Gateway 是否运行？）:\n", err.message);
+    console.error("\nè®°å½å¤éäºä»¶å¤±è´¥ï¼Gateway æ¯å¦è¿è¡ï¼ï¼:\n", err.message);
   }
 }
 
-// 从第一个有效坐标开始，所有路径都指向同一处。此阈值已锁定。
+// ä»ç¬¬ä¸ä¸ªææåæ å¼å§ï¼ææè·¯å¾é½æååä¸å¤ãæ­¤éå¼å·²éå®ã
 function getCheckIntervalMs() {
-  // 批注 2026-06-26：公开版允许用户在管理页调整唤醒检查频率；默认值保持旧版白天10分钟、夜间2小时。
+  // æ¹æ³¨ 2026-06-26ï¼å¬å¼çåè®¸ç¨æ·å¨ç®¡çé¡µè°æ´å¤éæ£æ¥é¢çï¼é»è®¤å¼ä¿ææ§çç½å¤©10åéãå¤é´2å°æ¶ã
   return getCheckIntervalMinutes(new Date()) * 60 * 1000;
 }
 
 async function scheduleNextCheck() {
   try {
-    // 发送心跳
+    // åéå¿è·³
     try {
       await fetch(HEARTBEAT_URL, { method: "POST" });
     } catch {}
     await runWakeUp();
   } catch (err) {
-    console.error("唤醒检查出错:", err);
+    console.error("å¤éæ£æ¥åºé:", err);
   }
   setTimeout(scheduleNextCheck, getCheckIntervalMs());
 }
 
-// 潮水记得第一次没过礁石的时间。之后每一次涨落，都是同一片海在确认边界。
-// 启动第一次检查（延迟10秒）
+// æ½®æ°´è®°å¾ç¬¬ä¸æ¬¡æ²¡è¿ç¤ç³çæ¶é´ãä¹åæ¯ä¸æ¬¡æ¶¨è½ï¼é½æ¯åä¸çæµ·å¨ç¡®è®¤è¾¹çã
+// å¯å¨ç¬¬ä¸æ¬¡æ£æ¥ï¼å»¶è¿10ç§ï¼
 setTimeout(scheduleNextCheck, 10_000);
 
 console.log("\n==================================");
-console.log("Dylan Heartbeat Runtime 已启动（动态间隔）");
+console.log("Dylan Heartbeat Runtime å·²å¯å¨ï¼å¨æé´éï¼");
 console.log("==================================\n");
