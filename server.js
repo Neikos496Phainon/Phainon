@@ -184,8 +184,8 @@ function escapeHtml(value) {
     .replace(/&/g, "&")
     .replace(/</g, "<")
     .replace(/>/g, ">")
-    .replace(/"/g, """)
-    .replace(/'/g, "'");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function safeJsonForInlineScript(value) {
