@@ -1,23 +1,22 @@
-// start.js — Dylan Heartbeat 合一入口
-// Zeabur / Railway 等平台通常只跑一个 start 命令，
-// 这里同时拉起 gateway(server.js) 和 wake-up(wake_up.js) 两个进程。
-const { fork } = require('child_process');
+// start.js — Dylan Heartbeat 合一入口（Zeabur 兼容版）
+// Zeabur 需要主进程直接监听 PORT；这里直接加载 server.js，
+// 同时以独立子进程拉起 wake_up.js，崩溃自动重启。
+const { spawn } = require('child_process');
 const path = require('path');
 
-const gateway = fork(path.join(__dirname, 'server.js'), { stdio: 'inherit' });
-const wakeup = fork(path.join(__dirname, 'wake_up.js'), { stdio: 'inherit' });
-
-function shutdown(signal) {
-  console.log(`\n[start] 收到 ${signal}，正在关闭子进程...`);
-  try { gateway.kill(signal); } catch (e) { /* ignore */ }
-  try { wakeup.kill(signal); } catch (e) { /* ignore */ }
-  setTimeout(() => process.exit(0), 500);
+function startWakeUp() {
+  const child = spawn(process.execPath, [path.join(__dirname, 'wake_up.js')], {
+    stdio: 'inherit',
+    env: process.env
+  });
+  child.on('error', (err) => console.error('[start] wake_up 启动失败:', err.message));
+  child.on('exit', (code, signal) => {
+    console.log(`[start] wake_up 退出 code=${code} signal=${signal}，5秒后自动重启`);
+    setTimeout(startWakeUp, 5000);
+  });
 }
 
-['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(sig => {
-  process.on(sig, () => shutdown(sig));
-});
+startWakeUp();
 
-process.on('uncaughtException', (err) => {
-  console.error('[start] 未捕获异常（子进程各自存活，不退出）:', err.message);
-});
+// 主进程直接加载 server.js（它自己会 listen PORT，Zeabur 才能探测到）
+require('./server.js');
