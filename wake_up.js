@@ -47,7 +47,7 @@ function getDiaryTimeString(date = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-// æ¹æ³¨ 2026-07-11ï¼æ¥è®°åªæ¥åæ¨¡åæ¾å¼è¾åºç [DIARY] åï¼é¿åææ®éæ¨éåå®¹è¯¯åè¿æ¬å°æ¥è®°ã
+// Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-11Ã¯Â¼ÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¥ÂÂªÃ¦ÂÂ¥Ã¥ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¦ÂÂ¾Ã¥Â¼ÂÃ¨Â¾ÂÃ¥ÂÂºÃ§ÂÂ [DIARY] Ã¥ÂÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¦ÂÂÃ¦ÂÂ®Ã©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¥ÂÂÃ¥Â®Â¹Ã¨Â¯Â¯Ã¥ÂÂÃ¨Â¿ÂÃ¦ÂÂ¬Ã¥ÂÂ°Ã¦ÂÂ¥Ã¨Â®Â°Ã£ÂÂ
 function extractDiaryFromResponse(text) {
   const diaryBlocks = [];
   const remainingText = String(text || "").replace(/\[DIARY\]([\s\S]*?)\[\/DIARY\]/gi, (_, content) => {
@@ -63,7 +63,7 @@ function extractDiaryFromResponse(text) {
 
 function appendDiaryEntry(content) {
   if (!readBooleanEnv("DIARY_ENABLED", true)) {
-    console.log("æ¨¡ååäºæ¥è®°ï¼ä½ DIARY_ENABLED=falseï¼æ¬æ¬¡ä¸ä¿å­");
+    console.log("Ã¦Â¨Â¡Ã¥ÂÂÃ¥ÂÂÃ¤ÂºÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¯Â¼ÂÃ¤Â½Â DIARY_ENABLED=falseÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¤Â¸ÂÃ¤Â¿ÂÃ¥Â­Â");
     return false;
   }
 
@@ -74,17 +74,17 @@ function appendDiaryEntry(content) {
   const diaryFile = path.join(DIARY_DIR_PATH, `${getDiaryDateString()}.md`);
   const entry = `\n\n## ${getDiaryTimeString()}\n\n${cleanContent}\n`;
   fs.appendFileSync(diaryFile, entry, "utf-8");
-  console.log(`å·²ä¿å­æ¥è®°ï¼${diaryFile}`);
+  console.log(`Ã¥Â·Â²Ã¤Â¿ÂÃ¥Â­ÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¯Â¼Â${diaryFile}`);
   return true;
 }
 
-// æ¹æ³¨ 2026-07-11ï¼æ¨éå±æ©å±ä¸º Bark/ntfyï¼é»è®¤ä»èµ° Barkï¼ä¿æ¤æ§é¨ç½²ä¸æ¹ .env ä¹è½ç»§ç»­è¿è¡ã
+// Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-11Ã¯Â¼ÂÃ¦ÂÂ¨Ã©ÂÂÃ¥Â±ÂÃ¦ÂÂ©Ã¥Â±ÂÃ¤Â¸Âº Bark/ntfyÃ¯Â¼ÂÃ©Â»ÂÃ¨Â®Â¤Ã¤Â»ÂÃ¨ÂµÂ° BarkÃ¯Â¼ÂÃ¤Â¿ÂÃ¦ÂÂ¤Ã¦ÂÂ§Ã©ÂÂ¨Ã§Â½Â²Ã¤Â¸ÂÃ¦ÂÂ¹ .env Ã¤Â¹ÂÃ¨ÂÂ½Ã§Â»Â§Ã§Â»Â­Ã¨Â¿ÂÃ¨Â¡ÂÃ£ÂÂ
 async function sendPushNotification({ title, body }) {
   const provider = (process.env.PUSH_PROVIDER || "bark").trim().toLowerCase();
 
   if (provider === "ntfy") {
     const topic = String(process.env.NTFY_TOPIC || "").trim();
-    if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC æªéç½®" };
+    if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC Ã¦ÂÂªÃ©ÂÂÃ§Â½Â®" };
 
     const server = (process.env.NTFY_SERVER_URL || "https://ntfy.sh").replace(/\/+$/, "");
     const headers = {
@@ -112,11 +112,11 @@ async function sendPushNotification({ title, body }) {
   }
 
   if (provider !== "bark") {
-    return { ok: false, providerLabel: provider || "æªç¥æ¸ é", reason: `ä¸æ¯æç PUSH_PROVIDERï¼${provider}` };
+    return { ok: false, providerLabel: provider || "Ã¦ÂÂªÃ§ÂÂ¥Ã¦Â¸Â Ã©ÂÂ", reason: `Ã¤Â¸ÂÃ¦ÂÂ¯Ã¦ÂÂÃ§ÂÂ PUSH_PROVIDERÃ¯Â¼Â${provider}` };
   }
 
   if (!process.env.BARK_KEY) {
-    return { ok: false, providerLabel: "Bark", reason: "Bark Key æªéç½®" };
+    return { ok: false, providerLabel: "Bark", reason: "Bark Key Ã¦ÂÂªÃ©ÂÂÃ§Â½Â®" };
   }
 
   const barkPayload = {
@@ -177,8 +177,8 @@ function normalizeContentToText(content) {
         if (!part || typeof part !== "object") return "";
         const type = typeof part.type === "string" ? part.type.toLowerCase() : "";
         if (type === "text" || type === "input_text") return part.text || part.content || "";
-        if (part.image_url || type.includes("image")) return "[å¾ç]";
-        if (part.file || type.includes("file")) return "[æä»¶]";
+        if (part.image_url || type.includes("image")) return "[Ã¥ÂÂ¾Ã§ÂÂ]";
+        if (part.file || type.includes("file")) return "[Ã¦ÂÂÃ¤Â»Â¶]";
         return "";
       })
       .filter(Boolean)
@@ -187,11 +187,11 @@ function normalizeContentToText(content) {
 
   if (content && typeof content === "object") {
     const type = typeof content.type === "string" ? content.type.toLowerCase() : "";
-    if (content.image_url || type.includes("image")) return "[å¾ç]";
-    if (content.file || type.includes("file")) return "[æä»¶]";
+    if (content.image_url || type.includes("image")) return "[Ã¥ÂÂ¾Ã§ÂÂ]";
+    if (content.file || type.includes("file")) return "[Ã¦ÂÂÃ¤Â»Â¶]";
   }
 
-  return "[éææ¬åå®¹]";
+  return "[Ã©ÂÂÃ¦ÂÂÃ¦ÂÂ¬Ã¥ÂÂÃ¥Â®Â¹]";
 }
 
 function summarizeWakeMessages(messages = []) {
@@ -207,29 +207,29 @@ function summarizeWakeMessages(messages = []) {
 
 function weatherCodeText(code) {
   const table = {
-    0: "æ´æ",
-    1: "å¤§è´æ´æ",
-    2: "å±é¨å¤äº",
-    3: "é´å¤©",
-    45: "æé¾",
-    48: "é¾å",
-    51: "å°æ¯æ¯é¨",
-    53: "ä¸­ç­æ¯æ¯é¨",
-    55: "è¾å¼ºæ¯æ¯é¨",
-    61: "å°é¨",
-    63: "ä¸­é¨",
-    65: "å¤§é¨",
-    71: "å°éª",
-    73: "ä¸­éª",
-    75: "å¤§éª",
-    80: "éµé¨",
-    81: "è¾å¼ºéµé¨",
-    82: "å¼ºéµé¨",
-    95: "é·æ´",
-    96: "é·æ´ä¼´å°å°é¹",
-    99: "é·æ´ä¼´å¤§å°é¹"
+    0: "Ã¦ÂÂ´Ã¦ÂÂ",
+    1: "Ã¥Â¤Â§Ã¨ÂÂ´Ã¦ÂÂ´Ã¦ÂÂ",
+    2: "Ã¥Â±ÂÃ©ÂÂ¨Ã¥Â¤ÂÃ¤ÂºÂ",
+    3: "Ã©ÂÂ´Ã¥Â¤Â©",
+    45: "Ã¦ÂÂÃ©ÂÂ¾",
+    48: "Ã©ÂÂ¾Ã¥ÂÂ",
+    51: "Ã¥Â°ÂÃ¦Â¯ÂÃ¦Â¯ÂÃ©ÂÂ¨",
+    53: "Ã¤Â¸Â­Ã§Â­ÂÃ¦Â¯ÂÃ¦Â¯ÂÃ©ÂÂ¨",
+    55: "Ã¨Â¾ÂÃ¥Â¼ÂºÃ¦Â¯ÂÃ¦Â¯ÂÃ©ÂÂ¨",
+    61: "Ã¥Â°ÂÃ©ÂÂ¨",
+    63: "Ã¤Â¸Â­Ã©ÂÂ¨",
+    65: "Ã¥Â¤Â§Ã©ÂÂ¨",
+    71: "Ã¥Â°ÂÃ©ÂÂª",
+    73: "Ã¤Â¸Â­Ã©ÂÂª",
+    75: "Ã¥Â¤Â§Ã©ÂÂª",
+    80: "Ã©ÂÂµÃ©ÂÂ¨",
+    81: "Ã¨Â¾ÂÃ¥Â¼ÂºÃ©ÂÂµÃ©ÂÂ¨",
+    82: "Ã¥Â¼ÂºÃ©ÂÂµÃ©ÂÂ¨",
+    95: "Ã©ÂÂ·Ã¦ÂÂ´",
+    96: "Ã©ÂÂ·Ã¦ÂÂ´Ã¤Â¼Â´Ã¥Â°ÂÃ¥ÂÂ°Ã©ÂÂ¹",
+    99: "Ã©ÂÂ·Ã¦ÂÂ´Ã¤Â¼Â´Ã¥Â¤Â§Ã¥ÂÂ°Ã©ÂÂ¹"
   };
-  return table[code] || `å¤©æ°ä»£ç  ${code}`;
+  return table[code] || `Ã¥Â¤Â©Ã¦Â°ÂÃ¤Â»Â£Ã§Â Â ${code}`;
 }
 
 async function fetchWeatherContext() {
@@ -238,11 +238,11 @@ async function fetchWeatherContext() {
   const lat = Number(process.env.WEATHER_LAT);
   const lon = Number(process.env.WEATHER_LON);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    console.log("å·²å¯ç¨ WEATHER_ENABLEDï¼ä½ WEATHER_LAT / WEATHER_LON æªæ­£ç¡®éç½®ï¼è·³è¿å¤©æ°æ³¨å¥");
+    console.log("Ã¥Â·Â²Ã¥ÂÂ¯Ã§ÂÂ¨ WEATHER_ENABLEDÃ¯Â¼ÂÃ¤Â½Â WEATHER_LAT / WEATHER_LON Ã¦ÂÂªÃ¦Â­Â£Ã§Â¡Â®Ã©ÂÂÃ§Â½Â®Ã¯Â¼ÂÃ¨Â·Â³Ã¨Â¿ÂÃ¥Â¤Â©Ã¦Â°ÂÃ¦Â³Â¨Ã¥ÂÂ¥");
     return "";
   }
 
-  const location = process.env.WEATHER_LOCATION_NAME || "å½åä½ç½®";
+  const location = process.env.WEATHER_LOCATION_NAME || "Ã¥Â½ÂÃ¥ÂÂÃ¤Â½ÂÃ§Â½Â®";
   const units = (process.env.WEATHER_UNITS || "metric").trim().toLowerCase();
   const temperatureUnit = units === "fahrenheit" ? "fahrenheit" : "celsius";
   const windSpeedUnit = units === "fahrenheit" ? "mph" : "kmh";
@@ -266,19 +266,19 @@ async function fetchWeatherContext() {
     const daily = data.daily || {};
     const unitsInfo = data.current_units || {};
     const lines = [
-      "## å¤©æ°ä¿¡æ¯",
-      `- ä½ç½®ï¼${location}`,
-      `- å½åï¼${weatherCodeText(current.weather_code)}ï¼${current.temperature_2m}${unitsInfo.temperature_2m || "Â°C"}ï¼ä½æ ${current.apparent_temperature}${unitsInfo.apparent_temperature || "Â°C"}`,
-      `- æ¹¿åº¦ï¼${current.relative_humidity_2m}${unitsInfo.relative_humidity_2m || "%"}`,
-      `- éé¨ï¼${current.precipitation}${unitsInfo.precipitation || "mm"}`,
-      `- é£éï¼${current.wind_speed_10m}${unitsInfo.wind_speed_10m || ""}`
+      "## Ã¥Â¤Â©Ã¦Â°ÂÃ¤Â¿Â¡Ã¦ÂÂ¯",
+      `- Ã¤Â½ÂÃ§Â½Â®Ã¯Â¼Â${location}`,
+      `- Ã¥Â½ÂÃ¥ÂÂÃ¯Â¼Â${weatherCodeText(current.weather_code)}Ã¯Â¼Â${current.temperature_2m}${unitsInfo.temperature_2m || "ÃÂ°C"}Ã¯Â¼ÂÃ¤Â½ÂÃ¦ÂÂ ${current.apparent_temperature}${unitsInfo.apparent_temperature || "ÃÂ°C"}`,
+      `- Ã¦Â¹Â¿Ã¥ÂºÂ¦Ã¯Â¼Â${current.relative_humidity_2m}${unitsInfo.relative_humidity_2m || "%"}`,
+      `- Ã©ÂÂÃ©ÂÂ¨Ã¯Â¼Â${current.precipitation}${unitsInfo.precipitation || "mm"}`,
+      `- Ã©Â£ÂÃ©ÂÂÃ¯Â¼Â${current.wind_speed_10m}${unitsInfo.wind_speed_10m || ""}`
     ];
     if (Array.isArray(daily.sunrise) && Array.isArray(daily.sunset)) {
-      lines.push(`- æ¥åº/æ¥è½ï¼${daily.sunrise[0]} / ${daily.sunset[0]}`);
+      lines.push(`- Ã¦ÂÂ¥Ã¥ÂÂº/Ã¦ÂÂ¥Ã¨ÂÂ½Ã¯Â¼Â${daily.sunrise[0]} / ${daily.sunset[0]}`);
     }
     return lines.join("\n");
   } catch (err) {
-    console.log("å¤©æ°æ³¨å¥å¤±è´¥ï¼è·³è¿æ¬æ¬¡å¤©æ°ä¿¡æ¯:", err.message);
+    console.log("Ã¥Â¤Â©Ã¦Â°ÂÃ¦Â³Â¨Ã¥ÂÂ¥Ã¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼ÂÃ¨Â·Â³Ã¨Â¿ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¥Â¤Â©Ã¦Â°ÂÃ¤Â¿Â¡Ã¦ÂÂ¯:", err.message);
     return "";
   } finally {
     clearTimeout(timeout);
@@ -287,19 +287,19 @@ async function fetchWeatherContext() {
 
 function loadTimelineMessages() {
   if (!fs.existsSync(TIMELINE_PATH)) {
-    console.log("æªæ¾å° enhanced_messages.json");
+    console.log("Ã¦ÂÂªÃ¦ÂÂ¾Ã¥ÂÂ° enhanced_messages.json");
     return null;
   }
 
   try {
     const parsed = JSON.parse(fs.readFileSync(TIMELINE_PATH, "utf-8"));
     if (!Array.isArray(parsed)) {
-      console.log("enhanced_messages.json æ ¼å¼éè¯¯ï¼é¡¶å±ä¸æ¯æ°ç»");
+      console.log("enhanced_messages.json Ã¦Â Â¼Ã¥Â¼ÂÃ©ÂÂÃ¨Â¯Â¯Ã¯Â¼ÂÃ©Â¡Â¶Ã¥Â±ÂÃ¤Â¸ÂÃ¦ÂÂ¯Ã¦ÂÂ°Ã§Â»Â");
       return null;
     }
     return parsed;
   } catch (err) {
-    console.error("è¯»å enhanced_messages.json å¤±è´¥:", err.message);
+    console.error("Ã¨Â¯Â»Ã¥ÂÂ enhanced_messages.json Ã¥Â¤Â±Ã¨Â´Â¥:", err.message);
     return null;
   }
 }
@@ -324,7 +324,7 @@ function shouldWake(lastUserTime) {
 
 function parseTimelineTimestamp(value) {
   const text = String(value || "");
-  const match = text.match(/ï¼?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:ï¼](\d{2})/);
+  const match = text.match(/Ã¯Â¼Â?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:Ã¯Â¼Â](\d{2})/);
   if (!match) return null;
   const [, yyyy, , month, day, hour, minute] = match;
   return zonedWallTimeToDate({ year: yyyy, month, day, hour, minute }, TIME_ZONE);
@@ -335,8 +335,8 @@ function getLastUserTime(messages) {
   for (const msg of reversed) {
     if (msg.role === "user") {
       const content = normalizeContentToText(msg.content);
-      // æ¹æ³¨ 2026-07-15ï¼å¼å®¹ Kelivo æ¶é´åç¼ "YYYY-MM-DDHH:mm"ï¼
-      // æ§ç "YYYY-MM-DD HH:mm" ä»ç¶å¯ç¨ï¼é¿åæ ç©ºæ ¼æ¶é´å¯¼è´ wake-up è¯¯å¤æ²¡æç¨æ·æ¶é´ã
+      // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ¥ÂÂ¼Ã¥Â®Â¹ Kelivo Ã¦ÂÂ¶Ã©ÂÂ´Ã¥ÂÂÃ§Â¼Â "YYYY-MM-DDHH:mm"Ã¯Â¼Â
+      // Ã¦ÂÂ§Ã§ÂÂ "YYYY-MM-DD HH:mm" Ã¤Â»ÂÃ§ÂÂ¶Ã¥ÂÂ¯Ã§ÂÂ¨Ã¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¦ÂÂ Ã§Â©ÂºÃ¦Â Â¼Ã¦ÂÂ¶Ã©ÂÂ´Ã¥Â¯Â¼Ã¨ÂÂ´ wake-up Ã¨Â¯Â¯Ã¥ÂÂ¤Ã¦Â²Â¡Ã¦ÂÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¦ÂÂ¶Ã©ÂÂ´Ã£ÂÂ
       const parsed = parseTimelineTimestamp(content);
       if (parsed) return parsed;
     }
@@ -349,7 +349,7 @@ function stripPosition(messages) {
 }
 
 function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
-  // ä¼åè¯»åç¬ç«çæç¤ºè¯æä»¶ï¼æ¨èæ¹å¼ï¼
+  // Ã¤Â¼ÂÃ¥ÂÂÃ¨Â¯Â»Ã¥ÂÂÃ§ÂÂ¬Ã§Â«ÂÃ§ÂÂÃ¦ÂÂÃ§Â¤ÂºÃ¨Â¯ÂÃ¦ÂÂÃ¤Â»Â¶Ã¯Â¼ÂÃ¦ÂÂ¨Ã¨ÂÂÃ¦ÂÂ¹Ã¥Â¼ÂÃ¯Â¼Â
   const promptFile = path.join(__dirname, "wake_prompt.txt");
   if (fs.existsSync(promptFile)) {
     const template = fs.readFileSync(promptFile, "utf-8");
@@ -360,7 +360,7 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
       .replace(/\$\{weather\}/g, weatherContext);
   }
 
-  // å¦ææä»¶ä¸å­å¨ï¼å°è¯ä»ç¯å¢åéè¯»åï¼å¼å®¹æ§éç½®ï¼
+  // Ã¥Â¦ÂÃ¦ÂÂÃ¦ÂÂÃ¤Â»Â¶Ã¤Â¸ÂÃ¥Â­ÂÃ¥ÂÂ¨Ã¯Â¼ÂÃ¥Â°ÂÃ¨Â¯ÂÃ¤Â»ÂÃ§ÂÂ¯Ã¥Â¢ÂÃ¥ÂÂÃ©ÂÂÃ¨Â¯Â»Ã¥ÂÂÃ¯Â¼ÂÃ¥ÂÂ¼Ã¥Â®Â¹Ã¦ÂÂ§Ã©ÂÂÃ§Â½Â®Ã¯Â¼Â
   if (process.env.WAKE_PROMPT_TEMPLATE) {
     return process.env.WAKE_PROMPT_TEMPLATE
       .replace(/\\n/g, '\n')
@@ -370,28 +370,28 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
       .replace(/\$\{weather\}/g, weatherContext);
   }
 
-  // é»è®¤çæºçæ¬ï¼å¼æºéç¨ï¼ï¼å¯èªè¡ä¿®æ¹æç¤ºè¯
+  // Ã©Â»ÂÃ¨Â®Â¤Ã§ÂÂÃ¦ÂÂºÃ§ÂÂÃ¦ÂÂ¬Ã¯Â¼ÂÃ¥Â¼ÂÃ¦ÂºÂÃ©ÂÂÃ§ÂÂ¨Ã¯Â¼ÂÃ¯Â¼ÂÃ¥ÂÂ¯Ã¨ÂÂªÃ¨Â¡ÂÃ¤Â¿Â®Ã¦ÂÂ¹Ã¦ÂÂÃ§Â¤ÂºÃ¨Â¯Â
   return `
-## æé«ä¼åçº§è§å
-1. è¿æ¯ä¸æ¬¡åå°èªå¨å¤éï¼ä¸æ¯ç¨æ·åèµ·çå¯¹è¯ãä½ æ²¡ææ¶å°ä»»ä½æ°æ¶æ¯ã
-2. ä½ çå¯ä¸ä»»å¡æ¯å³å®æ¯å¦ä¸»å¨èç³»ç¨æ·ãä¸è½çæå¯¹è¯åå¤ã
-3. è¾åºæ ¼å¼å¿é¡»ä¸¥æ ¼éµå®ä»¥ä¸äºéä¸ã
+## Ã¦ÂÂÃ©Â«ÂÃ¤Â¼ÂÃ¥ÂÂÃ§ÂºÂ§Ã¨Â§ÂÃ¥ÂÂ
+1. Ã¨Â¿ÂÃ¦ÂÂ¯Ã¤Â¸ÂÃ¦Â¬Â¡Ã¥ÂÂÃ¥ÂÂ°Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¤Â¸ÂÃ¦ÂÂ¯Ã§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂÃ¨ÂµÂ·Ã§ÂÂÃ¥Â¯Â¹Ã¨Â¯ÂÃ£ÂÂÃ¤Â½Â Ã¦Â²Â¡Ã¦ÂÂÃ¦ÂÂ¶Ã¥ÂÂ°Ã¤Â»Â»Ã¤Â½ÂÃ¦ÂÂ°Ã¦Â¶ÂÃ¦ÂÂ¯Ã£ÂÂ
+2. Ã¤Â½Â Ã§ÂÂÃ¥ÂÂ¯Ã¤Â¸ÂÃ¤Â»Â»Ã¥ÂÂ¡Ã¦ÂÂ¯Ã¥ÂÂ³Ã¥Â®ÂÃ¦ÂÂ¯Ã¥ÂÂ¦Ã¤Â¸Â»Ã¥ÂÂ¨Ã¨ÂÂÃ§Â³Â»Ã§ÂÂ¨Ã¦ÂÂ·Ã£ÂÂÃ¤Â¸ÂÃ¨ÂÂ½Ã§ÂÂÃ¦ÂÂÃ¥Â¯Â¹Ã¨Â¯ÂÃ¥ÂÂÃ¥Â¤ÂÃ£ÂÂ
+3. Ã¨Â¾ÂÃ¥ÂÂºÃ¦Â Â¼Ã¥Â¼ÂÃ¥Â¿ÂÃ©Â¡Â»Ã¤Â¸Â¥Ã¦Â Â¼Ã©ÂÂµÃ¥Â®ÂÃ¤Â»Â¥Ã¤Â¸ÂÃ¤ÂºÂÃ©ÂÂÃ¤Â¸ÂÃ£ÂÂ
 
-## å¤éä¿¡æ¯
-- å½åæ¶é´ï¼${currentTime}
-- è·ç¦»ç¨æ·æåä¸æ¡æ¶æ¯ï¼${diffMinutes} åé
+## Ã¥ÂÂ¤Ã©ÂÂÃ¤Â¿Â¡Ã¦ÂÂ¯
+- Ã¥Â½ÂÃ¥ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã¯Â¼Â${currentTime}
+- Ã¨Â·ÂÃ§Â¦Â»Ã§ÂÂ¨Ã¦ÂÂ·Ã¦ÂÂÃ¥ÂÂÃ¤Â¸ÂÃ¦ÂÂ¡Ã¦Â¶ÂÃ¦ÂÂ¯Ã¯Â¼Â${diffMinutes} Ã¥ÂÂÃ©ÂÂ
 ${weatherContext ? `\n${weatherContext}\n` : ""}
 
-## è¾åºæ ¼å¼
-- å¦ææ³èç³»ç¨æ·ï¼ç´æ¥åä½ æ³è¯´çè¯ãç³»ç»ä¼èªå¨æåæææºæ¨éåéãå¯ä»¥æ¯ä¸å¥è¯ï¼ä¹å¯ä»¥ç¬¬ä¸è¡ä½ä¸ºæ é¢ãç¬¬äºè¡ä½ä¸ºæ­£æã
-- å¦æä¸æ³èç³»ï¼åªè¾åºï¼[NO_ACTION]ï¼å¯éå¸¦ç®ç­åå ï¼10å­ä»¥åï¼ã
-- å¦æä½ æ³åæ¥è®°ï¼å¯ä»¥é¢å¤è¾åº [DIARY]...[/DIARY]ãåªææ³åæ¶æåï¼ä¸å¿æ¯æ¬¡é½åã
+## Ã¨Â¾ÂÃ¥ÂÂºÃ¦Â Â¼Ã¥Â¼Â
+- Ã¥Â¦ÂÃ¦ÂÂÃ¦ÂÂ³Ã¨ÂÂÃ§Â³Â»Ã§ÂÂ¨Ã¦ÂÂ·Ã¯Â¼ÂÃ§ÂÂ´Ã¦ÂÂ¥Ã¥ÂÂÃ¤Â½Â Ã¦ÂÂ³Ã¨Â¯Â´Ã§ÂÂÃ¨Â¯ÂÃ£ÂÂÃ§Â³Â»Ã§Â»ÂÃ¤Â¼ÂÃ¨ÂÂªÃ¥ÂÂ¨Ã¦ÂÂÃ¥ÂÂÃ¦ÂÂÃ¦ÂÂÃ¦ÂÂºÃ¦ÂÂ¨Ã©ÂÂÃ¥ÂÂÃ©ÂÂÃ£ÂÂÃ¥ÂÂ¯Ã¤Â»Â¥Ã¦ÂÂ¯Ã¤Â¸ÂÃ¥ÂÂ¥Ã¨Â¯ÂÃ¯Â¼ÂÃ¤Â¹ÂÃ¥ÂÂ¯Ã¤Â»Â¥Ã§Â¬Â¬Ã¤Â¸ÂÃ¨Â¡ÂÃ¤Â½ÂÃ¤Â¸ÂºÃ¦Â ÂÃ©Â¢ÂÃ£ÂÂÃ§Â¬Â¬Ã¤ÂºÂÃ¨Â¡ÂÃ¤Â½ÂÃ¤Â¸ÂºÃ¦Â­Â£Ã¦ÂÂÃ£ÂÂ
+- Ã¥Â¦ÂÃ¦ÂÂÃ¤Â¸ÂÃ¦ÂÂ³Ã¨ÂÂÃ§Â³Â»Ã¯Â¼ÂÃ¥ÂÂªÃ¨Â¾ÂÃ¥ÂÂºÃ¯Â¼Â[NO_ACTION]Ã¯Â¼ÂÃ¥ÂÂ¯Ã©ÂÂÃ¥Â¸Â¦Ã§Â®ÂÃ§ÂÂ­Ã¥ÂÂÃ¥ÂÂ Ã¯Â¼Â10Ã¥Â­ÂÃ¤Â»Â¥Ã¥ÂÂÃ¯Â¼ÂÃ£ÂÂ
+- Ã¥Â¦ÂÃ¦ÂÂÃ¤Â½Â Ã¦ÂÂ³Ã¥ÂÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¯Â¼ÂÃ¥ÂÂ¯Ã¤Â»Â¥Ã©Â¢ÂÃ¥Â¤ÂÃ¨Â¾ÂÃ¥ÂÂº [DIARY]...[/DIARY]Ã£ÂÂÃ¥ÂÂªÃ¦ÂÂÃ¦ÂÂ³Ã¥ÂÂÃ¦ÂÂ¶Ã¦ÂÂÃ¥ÂÂÃ¯Â¼ÂÃ¤Â¸ÂÃ¥Â¿ÂÃ¦Â¯ÂÃ¦Â¬Â¡Ã©ÂÂ½Ã¥ÂÂÃ£ÂÂ
 `;
 }
 
 async function runWakeUp() {
   console.log("\n==========================");
-  console.log("å¼å§èªå¨å¤é");
+  console.log("Ã¥Â¼ÂÃ¥Â§ÂÃ¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂ");
   console.log("==========================\n");
 
   const messages = loadTimelineMessages();
@@ -399,7 +399,7 @@ async function runWakeUp() {
 
   const lastUserTime = getLastUserTime(messages);
   if (!lastUserTime) {
-    console.log("æªæ¾å°ç¨æ·æ¶é´");
+    console.log("Ã¦ÂÂªÃ¦ÂÂ¾Ã¥ÂÂ°Ã§ÂÂ¨Ã¦ÂÂ·Ã¦ÂÂ¶Ã©ÂÂ´");
     return;
   }
 
@@ -407,7 +407,7 @@ async function runWakeUp() {
   const diffMinutes = Math.floor((now - lastUserTime) / 1000 / 60);
 
   if (!shouldWake(lastUserTime)) {
-    console.log("\næä¸éè¦å¤é\n");
+    console.log("\nÃ¦ÂÂÃ¤Â¸ÂÃ©ÂÂÃ¨Â¦ÂÃ¥ÂÂ¤Ã©ÂÂ\n");
     return;
   }
 
@@ -419,10 +419,10 @@ async function runWakeUp() {
     .filter(msg => msg.role !== "system")
     .filter(msg => {
       const c = normalizeContentToText(msg.content);
-      return !c.includes("<memories>") && !c.includes("è®°å¿åºä½¿ç¨ç­ç¥");
+      return !c.includes("<memories>") && !c.includes("Ã¨Â®Â°Ã¥Â¿ÂÃ¥ÂºÂÃ¤Â½Â¿Ã§ÂÂ¨Ã§Â­ÂÃ§ÂÂ¥");
     })
     .map(msg => {
-      const userDisplay = process.env.USER_DISPLAY_NAME || "ç¨æ·";
+      const userDisplay = process.env.USER_DISPLAY_NAME || "Ã§ÂÂ¨Ã¦ÂÂ·";
       const aiDisplay = process.env.AI_DISPLAY_NAME || "AI";
       const role = msg.role === "user" ? userDisplay : aiDisplay;
       let content = normalizeContentToText(msg.content);
@@ -444,29 +444,29 @@ async function runWakeUp() {
       content: [wakePrompt, cleanSP].filter(Boolean).join("\n\n")
     },
     {
-      // æ¹æ³¨ 2026-07-15ï¼Claude/é¨å New API ééå¨ä¼æ system æ½æç¬ç«å­æ®µï¼
-      // å¤éè¯·æ±å¦æå¨æ¯ systemï¼ä¸æ¸¸ messages ä¼åç©ºï¼å æ­¤æè¿è®°å½å¿é¡»ä½ä¸º user ä»»å¡è¾å¥åéã
+      // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂClaude/Ã©ÂÂ¨Ã¥ÂÂ New API Ã©ÂÂÃ©ÂÂÃ¥ÂÂ¨Ã¤Â¼ÂÃ¦ÂÂ system Ã¦ÂÂ½Ã¦ÂÂÃ§ÂÂ¬Ã§Â«ÂÃ¥Â­ÂÃ¦Â®ÂµÃ¯Â¼Â
+      // Ã¥ÂÂ¤Ã©ÂÂÃ¨Â¯Â·Ã¦Â±ÂÃ¥Â¦ÂÃ¦ÂÂÃ¥ÂÂ¨Ã¦ÂÂ¯ systemÃ¯Â¼ÂÃ¤Â¸ÂÃ¦Â¸Â¸ messages Ã¤Â¼ÂÃ¥ÂÂÃ§Â©ÂºÃ¯Â¼ÂÃ¥ÂÂ Ã¦Â­Â¤Ã¦ÂÂÃ¨Â¿ÂÃ¨Â®Â°Ã¥Â½ÂÃ¥Â¿ÂÃ©Â¡Â»Ã¤Â½ÂÃ¤Â¸Âº user Ã¤Â»Â»Ã¥ÂÂ¡Ã¨Â¾ÂÃ¥ÂÂ¥Ã¥ÂÂÃ©ÂÂÃ£ÂÂ
       role: "user",
-      content: `ä»¥ä¸æ¯ä½ ä¸ç¨æ·æè¿çèå¤©è®°å½ï¼ä»ä¾åå¿ååèã
+      content: `Ã¤Â»Â¥Ã¤Â¸ÂÃ¦ÂÂ¯Ã¤Â½Â Ã¤Â¸ÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¦ÂÂÃ¨Â¿ÂÃ§ÂÂÃ¨ÂÂÃ¥Â¤Â©Ã¨Â®Â°Ã¥Â½ÂÃ¯Â¼ÂÃ¤Â»ÂÃ¤Â¾ÂÃ¥ÂÂÃ¥Â¿ÂÃ¥ÂÂÃ¥ÂÂÃ¨ÂÂÃ£ÂÂ
 
-è¿äºåå®¹ä¸æ¯æ­£å¨åççå®æ¶å¯¹è¯ã
-ç¨æ·å¹¶æ²¡æç»ä½ åæ¶æ¯ã
+Ã¨Â¿ÂÃ¤ÂºÂÃ¥ÂÂÃ¥Â®Â¹Ã¤Â¸ÂÃ¦ÂÂ¯Ã¦Â­Â£Ã¥ÂÂ¨Ã¥ÂÂÃ§ÂÂÃ§ÂÂÃ¥Â®ÂÃ¦ÂÂ¶Ã¥Â¯Â¹Ã¨Â¯ÂÃ£ÂÂ
+Ã§ÂÂ¨Ã¦ÂÂ·Ã¥Â¹Â¶Ã¦Â²Â¡Ã¦ÂÂÃ§Â»ÂÃ¤Â½Â Ã¥ÂÂÃ¦Â¶ÂÃ¦ÂÂ¯Ã£ÂÂ
 
-ä½ ç°å¨å¤äºåå°èªä¸»å¤éç¶æã
+Ã¤Â½Â Ã§ÂÂ°Ã¥ÂÂ¨Ã¥Â¤ÂÃ¤ÂºÂÃ¥ÂÂÃ¥ÂÂ°Ã¨ÂÂªÃ¤Â¸Â»Ã¥ÂÂ¤Ã©ÂÂÃ§ÂÂ¶Ã¦ÂÂÃ£ÂÂ
 
-æè¿è®°å½ï¼
+Ã¦ÂÂÃ¨Â¿ÂÃ¨Â®Â°Ã¥Â½ÂÃ¯Â¼Â
 
 ${historyText}`
     }
   ];
 
-  // æ¹æ³¨ 2026-07-15ï¼wake-up prompt ä¼åå«æè¿èå¤©è®°å½ï¼
-  // é»è®¤æ¥å¿åªåæè¦ï¼é¿åå¬å¼é¨ç½²æ¶æå®æ´ä¸ä¸æå·è¿ pm2 æ¥å¿ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼Âwake-up prompt Ã¤Â¼ÂÃ¥ÂÂÃ¥ÂÂ«Ã¦ÂÂÃ¨Â¿ÂÃ¨ÂÂÃ¥Â¤Â©Ã¨Â®Â°Ã¥Â½ÂÃ¯Â¼Â
+  // Ã©Â»ÂÃ¨Â®Â¤Ã¦ÂÂ¥Ã¥Â¿ÂÃ¥ÂÂªÃ¥ÂÂÃ¦ÂÂÃ¨Â¦ÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ©ÂÂ¨Ã§Â½Â²Ã¦ÂÂ¶Ã¦ÂÂÃ¥Â®ÂÃ¦ÂÂ´Ã¤Â¸ÂÃ¤Â¸ÂÃ¦ÂÂÃ¥ÂÂ·Ã¨Â¿Â pm2 Ã¦ÂÂ¥Ã¥Â¿ÂÃ£ÂÂ
   console.log("\n===== WAKE MESSAGES SUMMARY =====\n");
   console.log(JSON.stringify(summarizeWakeMessages(wakeMessages)));
 
   if (!process.env.TARGET_API_URL || !process.env.TARGET_API_KEY || !process.env.MODEL_NAME) {
-    console.log("ç¼ºå° TARGET_API_URL / TARGET_API_KEY / MODEL_NAMEï¼è·³è¿æ¬æ¬¡å¤é");
+    console.log("Ã§Â¼ÂºÃ¥Â°Â TARGET_API_URL / TARGET_API_KEY / MODEL_NAMEÃ¯Â¼ÂÃ¨Â·Â³Ã¨Â¿ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¥ÂÂ¤Ã©ÂÂ");
     return;
   }
 
@@ -490,10 +490,10 @@ ${historyText}`
   try {
     data = JSON.parse(responseText);
   } catch {
-    throw new Error(`æ¨¡åè¿åçä¸æ¯ JSONï¼HTTP ${response.status}ï¼ï¼${responseText.slice(0, 300)}`);
+    throw new Error(`Ã¦Â¨Â¡Ã¥ÂÂÃ¨Â¿ÂÃ¥ÂÂÃ§ÂÂÃ¤Â¸ÂÃ¦ÂÂ¯ JSONÃ¯Â¼ÂHTTP ${response.status}Ã¯Â¼ÂÃ¯Â¼Â${responseText.slice(0, 300)}`);
   }
   if (!response.ok) {
-    throw new Error(`æ¨¡åè¯·æ±å¤±è´¥ï¼HTTP ${response.status}ï¼ï¼${responseText.slice(0, 300)}`);
+    throw new Error(`Ã¦Â¨Â¡Ã¥ÂÂÃ¨Â¯Â·Ã¦Â±ÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼ÂHTTP ${response.status}Ã¯Â¼ÂÃ¯Â¼Â${responseText.slice(0, 300)}`);
   }
 
   const rawAiText = normalizeContentToText(data.choices?.[0]?.message?.content).trim();
@@ -507,28 +507,28 @@ ${historyText}`
   let eventContent;
 
   if (!aiText) {
-    console.log("\nAI æªè¿åæ¨éåå®¹ï¼æ¬æ¬¡ä¸åéæ¨é\n");
+    console.log("\nAI Ã¦ÂÂªÃ¨Â¿ÂÃ¥ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¥ÂÂÃ¥Â®Â¹Ã¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¤Â¸ÂÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ\n");
     eventContent = diarySaved
-      ? `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼åªåæ¥è®°ï¼`
-      : `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼æ¨¡åç©ºåå¤ï¼`;
-  // å¤æ­ AI æ¯å¦æç¡®è¦éé»
+      ? `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â½ÂÃ¥ÂÂÃ¥ÂÂ Ã¯Â¼ÂÃ¥ÂÂªÃ¥ÂÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¯Â¼Â`
+      : `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â½ÂÃ¥ÂÂÃ¥ÂÂ Ã¯Â¼ÂÃ¦Â¨Â¡Ã¥ÂÂÃ§Â©ÂºÃ¥ÂÂÃ¥Â¤ÂÃ¯Â¼Â`;
+  // Ã¥ÂÂ¤Ã¦ÂÂ­ AI Ã¦ÂÂ¯Ã¥ÂÂ¦Ã¦ÂÂÃ§Â¡Â®Ã¨Â¦ÂÃ©ÂÂÃ©Â»Â
   } else if (aiText.match(/^\[NO_ACTION\]\s*(.{0,20})?/)) {
     const noActionMatch = aiText.match(/^\[NO_ACTION\]\s*(.{0,20})?/);
-    // AI éæ©ä¸åéæ¨é
-    console.log("\nAI éæ©ä¸åéæ¨é\n");
+    // AI Ã©ÂÂÃ¦ÂÂ©Ã¤Â¸ÂÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ
+    console.log("\nAI Ã©ÂÂÃ¦ÂÂ©Ã¤Â¸ÂÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ\n");
     let reason = (noActionMatch[1] || "").trim();
-    if (reason.startsWith("åå ï¼") || reason.startsWith("åå :")) {
-      reason = reason.replace(/^åå [ï¼:]\s*/, "").trim();
+    if (reason.startsWith("Ã¥ÂÂÃ¥ÂÂ Ã¯Â¼Â") || reason.startsWith("Ã¥ÂÂÃ¥ÂÂ :")) {
+      reason = reason.replace(/^Ã¥ÂÂÃ¥ÂÂ [Ã¯Â¼Â:]\s*/, "").trim();
     }
     eventContent = reason
-      ? `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼${reason}ï¼`
-      : `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï¼`;
+      ? `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â½ÂÃ¥ÂÂÃ¥ÂÂ Ã¯Â¼Â${reason}Ã¯Â¼Â`
+      : `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â¼Â`;
   } else {
-    // æ²¡æ [NO_ACTION] å°±è§ä¸ºæ³åæ¨é
-    console.log("\nAI éæ©åéæ¨é\n");
+    // Ã¦Â²Â¡Ã¦ÂÂ [NO_ACTION] Ã¥Â°Â±Ã¨Â§ÂÃ¤Â¸ÂºÃ¦ÂÂ³Ã¥ÂÂÃ¦ÂÂ¨Ã©ÂÂ
+    console.log("\nAI Ã©ÂÂÃ¦ÂÂ©Ã¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ\n");
     let barkText = aiText;
 
-    // å¦æ AI è¿æ¯åäº [BARK] ... [/BARK] æ ç­¾ï¼å°±å¥æ
+    // Ã¥Â¦ÂÃ¦ÂÂ AI Ã¨Â¿ÂÃ¦ÂÂ¯Ã¥ÂÂÃ¤ÂºÂ [BARK] ... [/BARK] Ã¦Â ÂÃ§Â­Â¾Ã¯Â¼ÂÃ¥Â°Â±Ã¥ÂÂ¥Ã¦ÂÂ
     const barkMatch = barkText.match(/\[BARK\]([\s\S]*?)\[\/BARK\]/);
     if (barkMatch) {
       barkText = barkMatch[1].trim();
@@ -537,43 +537,43 @@ ${historyText}`
       barkText = barkText.replace(/\s*\[\/BARK\]$/, "").trim();
     }
 
-    // æ¸æ´âæ é¢ï¼âãâæ­£æï¼âåç¼ï¼å¦ææï¼
+    // Ã¦Â¸ÂÃ¦Â´ÂÃ¢ÂÂÃ¦Â ÂÃ©Â¢ÂÃ¯Â¼ÂÃ¢ÂÂÃ£ÂÂÃ¢ÂÂÃ¦Â­Â£Ã¦ÂÂÃ¯Â¼ÂÃ¢ÂÂÃ¥ÂÂÃ§Â¼ÂÃ¯Â¼ÂÃ¥Â¦ÂÃ¦ÂÂÃ¦ÂÂÃ¯Â¼Â
     barkText = barkText
-      .replace(/^æ é¢[ï¼:]\s*/gm, "")
-      .replace(/^æ­£æ[ï¼:]\s*/gm, "");
+      .replace(/^Ã¦Â ÂÃ©Â¢Â[Ã¯Â¼Â:]\s*/gm, "")
+      .replace(/^Ã¦Â­Â£Ã¦ÂÂ[Ã¯Â¼Â:]\s*/gm, "");
 
-    // æè¡å¤ç
+    // Ã¦ÂÂÃ¨Â¡ÂÃ¥Â¤ÂÃ§ÂÂ
     const lines = barkText.split("\n").filter(line => line.trim() !== "");
 
     let title, body;
     if (lines.length === 0) {
-      console.log("\næ¨éåå®¹æ¸æ´åä¸ºç©ºï¼æ¬æ¬¡ä¸åéæ¨é\n");
-      eventContent = `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼æ¨éåå®¹ä¸ºç©ºï¼`;
+      console.log("\nÃ¦ÂÂ¨Ã©ÂÂÃ¥ÂÂÃ¥Â®Â¹Ã¦Â¸ÂÃ¦Â´ÂÃ¥ÂÂÃ¤Â¸ÂºÃ§Â©ÂºÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¤Â¸ÂÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ\n");
+      eventContent = `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â½ÂÃ¥ÂÂÃ¥ÂÂ Ã¯Â¼ÂÃ¦ÂÂ¨Ã©ÂÂÃ¥ÂÂÃ¥Â®Â¹Ã¤Â¸ÂºÃ§Â©ÂºÃ¯Â¼Â`;
     } else if (lines.length === 1) {
-      title = "æ¥èªAI";
+      title = "Ã¦ÂÂ¥Ã¨ÂÂªAI";
       body = lines[0].trim();
     } else if (lines.length === 2) {
       title = lines[0].trim();
       body = lines[1].trim();
     } else {
-      // â¥3 è¡ï¼ç¬¬ä¸è¡æ é¢ï¼å©ä½ç¨ç©ºæ ¼æ¼æ¥ææ­£æ
+      // Ã¢ÂÂ¥3 Ã¨Â¡ÂÃ¯Â¼ÂÃ§Â¬Â¬Ã¤Â¸ÂÃ¨Â¡ÂÃ¦Â ÂÃ©Â¢ÂÃ¯Â¼ÂÃ¥ÂÂ©Ã¤Â½ÂÃ§ÂÂ¨Ã§Â©ÂºÃ¦Â Â¼Ã¦ÂÂ¼Ã¦ÂÂ¥Ã¦ÂÂÃ¦Â­Â£Ã¦ÂÂ
       title = lines[0].trim();
       body = lines.slice(1).map(l => l.trim()).join(" ");
     }
 
     if (!eventContent) {
-      // ä¿æ¤ï¼æªæ­è¿é¿æ­£æï¼å¼å®¹ Bark å ntfy çç§»å¨ç«¯å±ç¤ºã
+      // Ã¤Â¿ÂÃ¦ÂÂ¤Ã¯Â¼ÂÃ¦ÂÂªÃ¦ÂÂ­Ã¨Â¿ÂÃ©ÂÂ¿Ã¦Â­Â£Ã¦ÂÂÃ¯Â¼ÂÃ¥ÂÂ¼Ã¥Â®Â¹ Bark Ã¥ÂÂ ntfy Ã§ÂÂÃ§Â§Â»Ã¥ÂÂ¨Ã§Â«Â¯Ã¥Â±ÂÃ§Â¤ÂºÃ£ÂÂ
       const safeBody = body.length > 500 ? body.substring(0, 497) + "..." : body;
-      // è¥æ é¢ä¸ºç©ºæä»¥æ°å­å¼å¤´ï¼å ä¸ªåç¼ï¼å¯èªè¡ä¿®æ¹
-      let safeTitle = title || "æ¥èªä¼´ä¾£";
-      if (/^\d/.test(safeTitle)) safeTitle = "æ¥èªä¼´ä¾£ï½" + safeTitle;
+      // Ã¨ÂÂ¥Ã¦Â ÂÃ©Â¢ÂÃ¤Â¸ÂºÃ§Â©ÂºÃ¦ÂÂÃ¤Â»Â¥Ã¦ÂÂ°Ã¥Â­ÂÃ¥Â¼ÂÃ¥Â¤Â´Ã¯Â¼ÂÃ¥ÂÂ Ã¤Â¸ÂªÃ¥ÂÂÃ§Â¼ÂÃ¯Â¼ÂÃ¥ÂÂ¯Ã¨ÂÂªÃ¨Â¡ÂÃ¤Â¿Â®Ã¦ÂÂ¹
+      let safeTitle = title || "Ã¦ÂÂ¥Ã¨ÂÂªÃ¤Â¼Â´Ã¤Â¾Â£";
+      if (/^\d/.test(safeTitle)) safeTitle = "Ã¦ÂÂ¥Ã¨ÂÂªÃ¤Â¼Â´Ã¤Â¾Â£Ã¯Â½Â" + safeTitle;
 
       const pushResult = await sendPushNotification({ title: safeTitle, body: safeBody });
       if (!pushResult.ok) {
-        console.log(`\n${pushResult.providerLabel} æ¨éå¤±è´¥ï¼æ¬æ¬¡ä¸åéæ¨é\n`);
-        eventContent = `ï¼${getLocalTimeString()} èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨éï½åå ï¼${pushResult.providerLabel} æ¨éå¤±è´¥ï¼${pushResult.reason}ï¼`;
+        console.log(`\n${pushResult.providerLabel} Ã¦ÂÂ¨Ã©ÂÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¤Â¸ÂÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ\n`);
+        eventContent = `Ã¯Â¼Â${getLocalTimeString()} Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂÃ¯Â½ÂÃ¥ÂÂÃ¥ÂÂ Ã¯Â¼Â${pushResult.providerLabel} Ã¦ÂÂ¨Ã©ÂÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â${pushResult.reason}Ã¯Â¼Â`;
       } else {
-        eventContent = `ï¼${getLocalTimeString()} ååç»ç¨æ·åäº${pushResult.providerLabel}æ¨éï¼${safeTitle}ï½${safeBody}ï¼`;
+        eventContent = `Ã¯Â¼Â${getLocalTimeString()} Ã¥ÂÂÃ¥ÂÂÃ§Â»ÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂÃ¤ÂºÂ${pushResult.providerLabel}Ã¦ÂÂ¨Ã©ÂÂÃ¯Â¼Â${safeTitle}Ã¯Â½Â${safeBody}Ã¯Â¼Â`;
       }
     }
   }
@@ -585,37 +585,37 @@ ${historyText}`
       body: JSON.stringify({ content: eventContent })
     });
     if (!eventResponse.ok) {
-      throw new Error(`Gateway è¿å HTTP ${eventResponse.status}`);
+      throw new Error(`Gateway Ã¨Â¿ÂÃ¥ÂÂ HTTP ${eventResponse.status}`);
     }
-    console.log("\nå·²éè¿ Gateway è®°å½å¤éäºä»¶\n");
+    console.log("\nÃ¥Â·Â²Ã©ÂÂÃ¨Â¿Â Gateway Ã¨Â®Â°Ã¥Â½ÂÃ¥ÂÂ¤Ã©ÂÂÃ¤ÂºÂÃ¤Â»Â¶\n");
   } catch (err) {
-    console.error("\nè®°å½å¤éäºä»¶å¤±è´¥ï¼Gateway æ¯å¦è¿è¡ï¼ï¼:\n", err.message);
+    console.error("\nÃ¨Â®Â°Ã¥Â½ÂÃ¥ÂÂ¤Ã©ÂÂÃ¤ÂºÂÃ¤Â»Â¶Ã¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼ÂGateway Ã¦ÂÂ¯Ã¥ÂÂ¦Ã¨Â¿ÂÃ¨Â¡ÂÃ¯Â¼ÂÃ¯Â¼Â:\n", err.message);
   }
 }
 
-// ä»ç¬¬ä¸ä¸ªææåæ å¼å§ï¼ææè·¯å¾é½æååä¸å¤ãæ­¤éå¼å·²éå®ã
+// Ã¤Â»ÂÃ§Â¬Â¬Ã¤Â¸ÂÃ¤Â¸ÂªÃ¦ÂÂÃ¦ÂÂÃ¥ÂÂÃ¦Â ÂÃ¥Â¼ÂÃ¥Â§ÂÃ¯Â¼ÂÃ¦ÂÂÃ¦ÂÂÃ¨Â·Â¯Ã¥Â¾ÂÃ©ÂÂ½Ã¦ÂÂÃ¥ÂÂÃ¥ÂÂÃ¤Â¸ÂÃ¥Â¤ÂÃ£ÂÂÃ¦Â­Â¤Ã©ÂÂÃ¥ÂÂ¼Ã¥Â·Â²Ã©ÂÂÃ¥Â®ÂÃ£ÂÂ
 function getCheckIntervalMs() {
-  // æ¹æ³¨ 2026-06-26ï¼å¬å¼çåè®¸ç¨æ·å¨ç®¡çé¡µè°æ´å¤éæ£æ¥é¢çï¼é»è®¤å¼ä¿ææ§çç½å¤©10åéãå¤é´2å°æ¶ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-06-26Ã¯Â¼ÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ§ÂÂÃ¥ÂÂÃ¨Â®Â¸Ã§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂ¨Ã§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¨Â°ÂÃ¦ÂÂ´Ã¥ÂÂ¤Ã©ÂÂÃ¦Â£ÂÃ¦ÂÂ¥Ã©Â¢ÂÃ§ÂÂÃ¯Â¼ÂÃ©Â»ÂÃ¨Â®Â¤Ã¥ÂÂ¼Ã¤Â¿ÂÃ¦ÂÂÃ¦ÂÂ§Ã§ÂÂÃ§ÂÂ½Ã¥Â¤Â©10Ã¥ÂÂÃ©ÂÂÃ£ÂÂÃ¥Â¤ÂÃ©ÂÂ´2Ã¥Â°ÂÃ¦ÂÂ¶Ã£ÂÂ
   return getCheckIntervalMinutes(new Date()) * 60 * 1000;
 }
 
 async function scheduleNextCheck() {
   try {
-    // åéå¿è·³
+    // Ã¥ÂÂÃ©ÂÂÃ¥Â¿ÂÃ¨Â·Â³
     try {
       await fetch(HEARTBEAT_URL, { method: "POST" });
     } catch {}
     await runWakeUp();
   } catch (err) {
-    console.error("å¤éæ£æ¥åºé:", err);
+    console.error("Ã¥ÂÂ¤Ã©ÂÂÃ¦Â£ÂÃ¦ÂÂ¥Ã¥ÂÂºÃ©ÂÂ:", err);
   }
   setTimeout(scheduleNextCheck, getCheckIntervalMs());
 }
 
-// æ½®æ°´è®°å¾ç¬¬ä¸æ¬¡æ²¡è¿ç¤ç³çæ¶é´ãä¹åæ¯ä¸æ¬¡æ¶¨è½ï¼é½æ¯åä¸çæµ·å¨ç¡®è®¤è¾¹çã
-// å¯å¨ç¬¬ä¸æ¬¡æ£æ¥ï¼å»¶è¿10ç§ï¼
+// Ã¦Â½Â®Ã¦Â°Â´Ã¨Â®Â°Ã¥Â¾ÂÃ§Â¬Â¬Ã¤Â¸ÂÃ¦Â¬Â¡Ã¦Â²Â¡Ã¨Â¿ÂÃ§Â¤ÂÃ§ÂÂ³Ã§ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã£ÂÂÃ¤Â¹ÂÃ¥ÂÂÃ¦Â¯ÂÃ¤Â¸ÂÃ¦Â¬Â¡Ã¦Â¶Â¨Ã¨ÂÂ½Ã¯Â¼ÂÃ©ÂÂ½Ã¦ÂÂ¯Ã¥ÂÂÃ¤Â¸ÂÃ§ÂÂÃ¦ÂµÂ·Ã¥ÂÂ¨Ã§Â¡Â®Ã¨Â®Â¤Ã¨Â¾Â¹Ã§ÂÂÃ£ÂÂ
+// Ã¥ÂÂ¯Ã¥ÂÂ¨Ã§Â¬Â¬Ã¤Â¸ÂÃ¦Â¬Â¡Ã¦Â£ÂÃ¦ÂÂ¥Ã¯Â¼ÂÃ¥Â»Â¶Ã¨Â¿Â10Ã§Â§ÂÃ¯Â¼Â
 setTimeout(scheduleNextCheck, 10_000);
 
 console.log("\n==================================");
-console.log("Dylan Heartbeat Runtime å·²å¯å¨ï¼å¨æé´éï¼");
+console.log("Dylan Heartbeat Runtime Ã¥Â·Â²Ã¥ÂÂ¯Ã¥ÂÂ¨Ã¯Â¼ÂÃ¥ÂÂ¨Ã¦ÂÂÃ©ÂÂ´Ã©ÂÂÃ¯Â¼Â");
 console.log("==================================\n");
