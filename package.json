@@ -1,10 +1,11 @@
 {
   "name": "kelivo-gateway",
-  "version": "1.0.0",
-  "description": "A local Kelivo gateway that keeps timed chat context and lets your character send optional Bark wake-up messages.",
+  "version": "1.0.1",
+  "description": "Dylan Heartbeat — Kelivo AI 伴侣常驻运行时（Gateway + Wake-up 合一入口，适配 Zeabur 单进程部署）",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node start.js",
+    "gateway": "node server.js",
     "wake": "node wake_up.js",
     "test": "node --test"
   },
