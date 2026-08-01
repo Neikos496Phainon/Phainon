@@ -27,6 +27,7 @@ app.register(require("@fastify/formbody"));
 const PORT = Number(process.env.PORT) || 3000;
 const TARGET_API_URL = process.env.TARGET_API_URL;
 const DATA_DIR = process.env.DATA_DIR || __dirname;
+fs.mkdirSync(DATA_DIR, { recursive: true });
 const TIME_ZONE = resolveTimeZone();
 const IS_RAILWAY_RUNTIME = Boolean(
   process.env.RAILWAY_ENVIRONMENT ||
@@ -35,8 +36,8 @@ const IS_RAILWAY_RUNTIME = Boolean(
 );
 const TIMELINE_FILE = path.join(DATA_DIR, "enhanced_messages.json");
 const TIMESTAMP_DB_FILE = path.join(DATA_DIR, "message_timestamps.json");
-// æ¹æ³¨ 2026-07-17ï¼ç®¡çé¡µä¿å­ .env åè¦è®© PM2 å·æ°è¿ç¨ç¯å¢ï¼ä¿çåè¿ç¨åï¼
-// åªè¡¥ --update-envï¼é¿åç¨æ·æ¹å®æ¨ééç½®å´ç»§ç»­è¿è¡æ§å¼ã
+// Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-17Ã¯Â¼ÂÃ§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¤Â¿ÂÃ¥Â­Â .env Ã¥ÂÂÃ¨Â¦ÂÃ¨Â®Â© PM2 Ã¥ÂÂ·Ã¦ÂÂ°Ã¨Â¿ÂÃ§Â¨ÂÃ§ÂÂ¯Ã¥Â¢ÂÃ¯Â¼ÂÃ¤Â¿ÂÃ§ÂÂÃ¥ÂÂÃ¨Â¿ÂÃ§Â¨ÂÃ¥ÂÂÃ¯Â¼Â
+// Ã¥ÂÂªÃ¨Â¡Â¥ --update-envÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¦ÂÂ¹Ã¥Â®ÂÃ¦ÂÂ¨Ã©ÂÂÃ©ÂÂÃ§Â½Â®Ã¥ÂÂ´Ã§Â»Â§Ã§Â»Â­Ã¨Â¿ÂÃ¨Â¡ÂÃ¦ÂÂ§Ã¥ÂÂ¼Ã£ÂÂ
 const DEFAULT_RESTART_COMMAND = "pm2 restart gateway wake-up --update-env";
 
 function readBooleanEnv(key, fallback = false) {
@@ -46,17 +47,17 @@ function readBooleanEnv(key, fallback = false) {
 }
 
 function configuredModelName() {
-  // æ¹æ³¨ 2026-07-15ï¼/v1/models è¦æ´é²é¨ç½²èå®ééç½®çæ¨¡ååï¼
-  // ä¸è½ç»§ç»­ç¡¬ç¼ç ç¤ºä¾æ¨¡åï¼å¦å Kelivo æ¨¡åéæ©ä¼åçå®ä¸æ¸¸ä¸ä¸è´ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼Â/v1/models Ã¨Â¦ÂÃ¦ÂÂ´Ã©ÂÂ²Ã©ÂÂ¨Ã§Â½Â²Ã¨ÂÂÃ¥Â®ÂÃ©ÂÂÃ©ÂÂÃ§Â½Â®Ã§ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¥ÂÂÃ¯Â¼Â
+  // Ã¤Â¸ÂÃ¨ÂÂ½Ã§Â»Â§Ã§Â»Â­Ã§Â¡Â¬Ã§Â¼ÂÃ§Â ÂÃ§Â¤ÂºÃ¤Â¾ÂÃ¦Â¨Â¡Ã¥ÂÂÃ¯Â¼ÂÃ¥ÂÂ¦Ã¥ÂÂ Kelivo Ã¦Â¨Â¡Ã¥ÂÂÃ©ÂÂÃ¦ÂÂ©Ã¤Â¼ÂÃ¥ÂÂÃ§ÂÂÃ¥Â®ÂÃ¤Â¸ÂÃ¦Â¸Â¸Ã¤Â¸ÂÃ¤Â¸ÂÃ¨ÂÂ´Ã£ÂÂ
   return String(process.env.MODEL_NAME || "gateway-model").trim() || "gateway-model";
 }
 
 // ========================
-// å¤æ¨¡ææ¶æ¯å¤ç
+// Ã¥Â¤ÂÃ¦Â¨Â¡Ã¦ÂÂÃ¦Â¶ÂÃ¦ÂÂ¯Ã¥Â¤ÂÃ§ÂÂ
 // ========================
 function shouldForwardMultimodalContent() {
-  // æ¹æ³¨ 2026-07-15ï¼é»è®¤æ Kelivo çå¾ç content æ°ç»åæ ·äº¤ç»è§è§æ¨¡åï¼
-  // å¦æä¸æ¸¸ä¸æ¯å¤æ¨¡ææ¨¡åï¼é¨ç½²èä»å¯æ¾å¼è®¾ MULTIMODAL_MODE=text éåæ§ç [å¾ç] å ä½æ¨¡å¼ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ©Â»ÂÃ¨Â®Â¤Ã¦ÂÂ Kelivo Ã§ÂÂÃ¥ÂÂ¾Ã§ÂÂ content Ã¦ÂÂ°Ã§Â»ÂÃ¥ÂÂÃ¦Â Â·Ã¤ÂºÂ¤Ã§Â»ÂÃ¨Â§ÂÃ¨Â§ÂÃ¦Â¨Â¡Ã¥ÂÂÃ¯Â¼Â
+  // Ã¥Â¦ÂÃ¦ÂÂÃ¤Â¸ÂÃ¦Â¸Â¸Ã¤Â¸ÂÃ¦ÂÂ¯Ã¥Â¤ÂÃ¦Â¨Â¡Ã¦ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¯Â¼ÂÃ©ÂÂ¨Ã§Â½Â²Ã¨ÂÂÃ¤Â»ÂÃ¥ÂÂ¯Ã¦ÂÂ¾Ã¥Â¼ÂÃ¨Â®Â¾ MULTIMODAL_MODE=text Ã©ÂÂÃ¥ÂÂÃ¦ÂÂ§Ã§ÂÂ [Ã¥ÂÂ¾Ã§ÂÂ] Ã¥ÂÂ Ã¤Â½ÂÃ¦Â¨Â¡Ã¥Â¼ÂÃ£ÂÂ
   const mode = (process.env.MULTIMODAL_MODE || "passthrough").trim().toLowerCase();
   return !["text", "plain", "placeholder", "false", "off", "0"].includes(mode);
 }
@@ -97,17 +98,17 @@ function normalizeContentToText(content) {
       .map(part => {
         const text = getTextFromContentPart(part).trim();
         if (text) return text;
-        if (isImageContentPart(part)) return "[å¾ç]";
-        if (isFileContentPart(part)) return "[æä»¶]";
+        if (isImageContentPart(part)) return "[Ã¥ÂÂ¾Ã§ÂÂ]";
+        if (isFileContentPart(part)) return "[Ã¦ÂÂÃ¤Â»Â¶]";
         return "";
       })
       .filter(Boolean);
     return parts.join("\n");
   }
 
-  if (isImageContentPart(content)) return "[å¾ç]";
-  if (isFileContentPart(content)) return "[æä»¶]";
-  return "[éææ¬åå®¹]";
+  if (isImageContentPart(content)) return "[Ã¥ÂÂ¾Ã§ÂÂ]";
+  if (isFileContentPart(content)) return "[Ã¦ÂÂÃ¤Â»Â¶]";
+  return "[Ã©ÂÂÃ¦ÂÂÃ¦ÂÂ¬Ã¥ÂÂÃ¥Â®Â¹]";
 }
 
 function normalizeMessageForTimeline(msg) {
@@ -199,7 +200,7 @@ function safeJsonForInlineScript(value) {
 }
 
 // ========================
-// è¯»å timeline
+// Ã¨Â¯Â»Ã¥ÂÂ timeline
 // ========================
 function loadTimeline() {
   if (!fs.existsSync(TIMELINE_FILE)) return [];
@@ -207,7 +208,7 @@ function loadTimeline() {
 }
 
 // ========================
-// ä¿å­ timelineï¼ä¿ç SPï¼
+// Ã¤Â¿ÂÃ¥Â­Â timelineÃ¯Â¼ÂÃ¤Â¿ÂÃ§ÂÂ SPÃ¯Â¼Â
 // ========================
 function saveTimeline(messages) {
   const sp = messages.find(m => m.role === "system");
@@ -218,23 +219,23 @@ function saveTimeline(messages) {
 }
 
 // ========================
-// æåæ¶é´æ³ï¼æ¯æå¤ç§æ ¼å¼ï¼
+// Ã¦ÂÂÃ¥ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã¦ÂÂ³Ã¯Â¼ÂÃ¦ÂÂ¯Ã¦ÂÂÃ¥Â¤ÂÃ§Â§ÂÃ¦Â Â¼Ã¥Â¼ÂÃ¯Â¼Â
 // ========================
 function parseTimestampLabel(value) {
   const text = String(value || "");
-  const match = text.match(/ï¼?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:ï¼](\d{2})/);
+  const match = text.match(/Ã¯Â¼Â?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:Ã¯Â¼Â](\d{2})/);
   if (!match) return null;
   const [, yyyy, , month, day, hour, minute] = match;
-  // æ¹æ³¨ 2026-07-30ï¼Kelivo åè¿æ¶æ¯åç¼çæ¯ç¨æ·éç½®æ¶åºçå¢ä¸æ¶é´ï¼
-  // å¬ç½/Railway ä¸è½ææå¡å¨ UTC è§£æï¼å¦åæ¶é´çº¿åèªå¨å¤éé½ä¼è¢«æ¨è¿ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-30Ã¯Â¼ÂKelivo Ã¥ÂÂÃ¨Â¿ÂÃ¦Â¶ÂÃ¦ÂÂ¯Ã¥ÂÂÃ§Â¼ÂÃ§ÂÂÃ¦ÂÂ¯Ã§ÂÂ¨Ã¦ÂÂ·Ã©ÂÂÃ§Â½Â®Ã¦ÂÂ¶Ã¥ÂÂºÃ§ÂÂÃ¥Â¢ÂÃ¤Â¸ÂÃ¦ÂÂ¶Ã©ÂÂ´Ã¯Â¼Â
+  // Ã¥ÂÂ¬Ã§Â½Â/Railway Ã¤Â¸ÂÃ¨ÂÂ½Ã¦ÂÂÃ¦ÂÂÃ¥ÂÂ¡Ã¥ÂÂ¨ UTC Ã¨Â§Â£Ã¦ÂÂÃ¯Â¼ÂÃ¥ÂÂ¦Ã¥ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã§ÂºÂ¿Ã¥ÂÂÃ¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ©ÂÂ½Ã¤Â¼ÂÃ¨Â¢Â«Ã¦ÂÂ¨Ã¨Â¿ÂÃ£ÂÂ
   return zonedWallTimeToDate({ year: yyyy, month, day, hour, minute }, TIME_ZONE);
 }
 
 function stripLeadingTimestamp(content) {
-  // æ¹æ³¨ 2026-07-15ï¼å¼å®¹ Kelivo ææ¶ææ¥æåæ¶é´è´´å¨ä¸èµ·çåç¼ï¼
-  // æ§æ ¼å¼ "YYYY-MM-DD HH:mm" ç»§ç»­ä¿çï¼æ°æ ¼å¼ "YYYY-MM-DDHH:mm" ä¸åå¯¼è´æ¶é´è®°å¿/æåºå¤±æã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ¥ÂÂ¼Ã¥Â®Â¹ Kelivo Ã¦ÂÂÃ¦ÂÂ¶Ã¦ÂÂÃ¦ÂÂ¥Ã¦ÂÂÃ¥ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã¨Â´Â´Ã¥ÂÂ¨Ã¤Â¸ÂÃ¨ÂµÂ·Ã§ÂÂÃ¥ÂÂÃ§Â¼ÂÃ¯Â¼Â
+  // Ã¦ÂÂ§Ã¦Â Â¼Ã¥Â¼Â "YYYY-MM-DD HH:mm" Ã§Â»Â§Ã§Â»Â­Ã¤Â¿ÂÃ§ÂÂÃ¯Â¼ÂÃ¦ÂÂ°Ã¦Â Â¼Ã¥Â¼Â "YYYY-MM-DDHH:mm" Ã¤Â¸ÂÃ¥ÂÂÃ¥Â¯Â¼Ã¨ÂÂ´Ã¦ÂÂ¶Ã©ÂÂ´Ã¨Â®Â°Ã¥Â¿Â/Ã¦ÂÂÃ¥ÂºÂÃ¥Â¤Â±Ã¦ÂÂÃ£ÂÂ
   return String(content || "")
-    .replace(/^ï¼?\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]?)\d{1,2}[:ï¼]\d{2}[ï¼\s]*/, "")
+    .replace(/^Ã¯Â¼Â?\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]?)\d{1,2}[:Ã¯Â¼Â]\d{2}[Ã¯Â¼Â\s]*/, "")
     .trim();
 }
 
@@ -243,7 +244,7 @@ function extractTimestamp(content) {
 }
 
 // ========================
-// æ¶é´æ³è®°å¿åº
+// Ã¦ÂÂ¶Ã©ÂÂ´Ã¦ÂÂ³Ã¨Â®Â°Ã¥Â¿ÂÃ¥ÂºÂ
 // ========================
 function loadTimestampDB() {
   if (!fs.existsSync(TIMESTAMP_DB_FILE)) return {};
@@ -277,18 +278,18 @@ function extractTimestampWithMemory(msg, tsDB) {
 }
 
 // ========================
-// æ¶æ¯å¤æ­
+// Ã¦Â¶ÂÃ¦ÂÂ¯Ã¥ÂÂ¤Ã¦ÂÂ­
 // ========================
 function isSpecialEvent(msg) {
   if (msg.role !== "assistant") return false;
   const c = normalizeContentToText(msg.content);
-  // æ¹æ³¨ 2026-07-11ï¼æ¨éæ¸ éä» Bark æ©å±å° ntfyï¼ç»§ç»­å¼å®¹æ©ææ¶é´çº¿éç Bark/å®å®äºä»¶ï¼é¿ååçº§åæ§å¤éäºä»¶ä¸¢å¤±ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-11Ã¯Â¼ÂÃ¦ÂÂ¨Ã©ÂÂÃ¦Â¸Â Ã©ÂÂÃ¤Â»Â Bark Ã¦ÂÂ©Ã¥Â±ÂÃ¥ÂÂ° ntfyÃ¯Â¼ÂÃ§Â»Â§Ã§Â»Â­Ã¥ÂÂ¼Ã¥Â®Â¹Ã¦ÂÂ©Ã¦ÂÂÃ¦ÂÂ¶Ã©ÂÂ´Ã§ÂºÂ¿Ã©ÂÂÃ§ÂÂ Bark/Ã¥Â®ÂÃ¥Â®ÂÃ¤ÂºÂÃ¤Â»Â¶Ã¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¥ÂÂÃ§ÂºÂ§Ã¥ÂÂÃ¦ÂÂ§Ã¥ÂÂ¤Ã©ÂÂÃ¤ÂºÂÃ¤Â»Â¶Ã¤Â¸Â¢Ã¥Â¤Â±Ã£ÂÂ
   return (
-    c.includes("ååç»å®å®åäº Bark") ||
-    c.includes("ååç»ç¨æ·åäº Bark") ||
-    c.includes("èªå¨å¤éï¼æ¬æ¬¡æªåé Bark") ||
-    c.includes("èªå¨å¤éï¼æ¬æ¬¡æªåéæ¨é") ||
-    (c.includes("ååç»ç¨æ·åäº") && c.includes("æ¨é"))
+    c.includes("Ã¥ÂÂÃ¥ÂÂÃ§Â»ÂÃ¥Â®ÂÃ¥Â®ÂÃ¥ÂÂÃ¤ÂºÂ Bark") ||
+    c.includes("Ã¥ÂÂÃ¥ÂÂÃ§Â»ÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂÃ¤ÂºÂ Bark") ||
+    c.includes("Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂ Bark") ||
+    c.includes("Ã¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¦ÂÂ¬Ã¦Â¬Â¡Ã¦ÂÂªÃ¥ÂÂÃ©ÂÂÃ¦ÂÂ¨Ã©ÂÂ") ||
+    (c.includes("Ã¥ÂÂÃ¥ÂÂÃ§Â»ÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂÃ¤ÂºÂ") && c.includes("Ã¦ÂÂ¨Ã©ÂÂ"))
   );
 }
 
@@ -309,7 +310,7 @@ function isSystemRule(msg) {
 }
 
 // ========================
-// æå»º Timeline
+// Ã¦ÂÂÃ¥Â»Âº Timeline
 // ========================
 function buildTimeline(kelivoMessages, tsDB) {
   const oldTimeline = loadTimeline();
@@ -389,7 +390,7 @@ function buildTimeline(kelivoMessages, tsDB) {
 }
 
 // ========================
-// è¿½å ç¹æ®äºä»¶
+// Ã¨Â¿Â½Ã¥ÂÂ Ã§ÂÂ¹Ã¦Â®ÂÃ¤ÂºÂÃ¤Â»Â¶
 // ========================
 function appendSpecialEvent(content) {
   const timeline = loadTimeline();
@@ -400,8 +401,8 @@ function appendSpecialEvent(content) {
   const newEvent = { role: "assistant", content, position: maxPos + 0.5 };
   timeline.push(newEvent);
   saveTimeline(timeline);
-  // æ¹æ³¨ 2026-07-15ï¼ç¹æ®äºä»¶å¯è½åå«æ¨éæ­£æï¼æ¥å¿åªè®°å½é¿åº¦ï¼é¿åå¬å¼é¨ç½²æ¶æ³æ¼ç§å¯åå®¹ã
-  console.log(`\nå·²è®°å½ç¹æ®äºä»¶ (position ${newEvent.position}, chars ${normalizeContentToText(content).length})\n`);
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ§ÂÂ¹Ã¦Â®ÂÃ¤ÂºÂÃ¤Â»Â¶Ã¥ÂÂ¯Ã¨ÂÂ½Ã¥ÂÂÃ¥ÂÂ«Ã¦ÂÂ¨Ã©ÂÂÃ¦Â­Â£Ã¦ÂÂÃ¯Â¼ÂÃ¦ÂÂ¥Ã¥Â¿ÂÃ¥ÂÂªÃ¨Â®Â°Ã¥Â½ÂÃ©ÂÂ¿Ã¥ÂºÂ¦Ã¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ©ÂÂ¨Ã§Â½Â²Ã¦ÂÂ¶Ã¦Â³ÂÃ¦Â¼ÂÃ§Â§ÂÃ¥Â¯ÂÃ¥ÂÂÃ¥Â®Â¹Ã£ÂÂ
+  console.log(`\nÃ¥Â·Â²Ã¨Â®Â°Ã¥Â½ÂÃ§ÂÂ¹Ã¦Â®ÂÃ¤ÂºÂÃ¤Â»Â¶ (position ${newEvent.position}, chars ${normalizeContentToText(content).length})\n`);
 }
 
 function stripPosition(messages) {
@@ -411,7 +412,7 @@ function stripPosition(messages) {
 let wakeUpLastHeartbeat = null;
 
 // ========================
-// é¢è®¾æ¹æ¡
+// Ã©Â¢ÂÃ¨Â®Â¾Ã¦ÂÂ¹Ã¦Â¡Â
 // ========================
 const PRESETS_FILE = path.join(DATA_DIR, "presets.json");
 const ENV_FILE = path.join(DATA_DIR, ".env");
@@ -505,30 +506,30 @@ function readRestartCommand() {
 }
 
 // ========================
-// å®å¨ï¼æ¾è¡ /adminï¼å¶ä»ä»æ¬å°/å±åç½
+// Ã¥Â®ÂÃ¥ÂÂ¨Ã¯Â¼ÂÃ¦ÂÂ¾Ã¨Â¡Â /adminÃ¯Â¼ÂÃ¥ÂÂ¶Ã¤Â»ÂÃ¤Â»ÂÃ¦ÂÂ¬Ã¥ÂÂ°/Ã¥Â±ÂÃ¥ÂÂÃ§Â½Â
 // ========================
 app.addHook("onRequest", (req, reply, done) => {
   if (req.url.startsWith("/admin")) return done();
-  // æ¹æ³¨ 2026-07-15ï¼å¬ç½é¨ç½²å¸¸ç»è¿åä»£ï¼çå®å¬ç½è¯·æ±å¯è½å¨ Node ä¾§æ¾ç¤ºä¸º 127/10 ç½æ®µï¼
-  // æä»¥ ALLOW_PUBLIC_API=true åå¿é¡»åéª /v1 çç½å³ keyï¼é¿åè¢«äºå¹³å°åç½ IP ç»è¿ã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ¥ÂÂ¬Ã§Â½ÂÃ©ÂÂ¨Ã§Â½Â²Ã¥Â¸Â¸Ã§Â»ÂÃ¨Â¿ÂÃ¥ÂÂÃ¤Â»Â£Ã¯Â¼ÂÃ§ÂÂÃ¥Â®ÂÃ¥ÂÂ¬Ã§Â½ÂÃ¨Â¯Â·Ã¦Â±ÂÃ¥ÂÂ¯Ã¨ÂÂ½Ã¥ÂÂ¨ Node Ã¤Â¾Â§Ã¦ÂÂ¾Ã§Â¤ÂºÃ¤Â¸Âº 127/10 Ã§Â½ÂÃ¦Â®ÂµÃ¯Â¼Â
+  // Ã¦ÂÂÃ¤Â»Â¥ ALLOW_PUBLIC_API=true Ã¥ÂÂÃ¥Â¿ÂÃ©Â¡Â»Ã¥ÂÂÃ©ÂªÂ /v1 Ã§ÂÂÃ§Â½ÂÃ¥ÂÂ³ keyÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¨Â¢Â«Ã¤ÂºÂÃ¥Â¹Â³Ã¥ÂÂ°Ã¥ÂÂÃ§Â½Â IP Ã§Â»ÂÃ¨Â¿ÂÃ£ÂÂ
   if (readBooleanEnv("ALLOW_PUBLIC_API", false) && req.url.startsWith("/v1/")) {
     const configuredKey = readEnvValue("GATEWAY_API_KEY");
     if (!configuredKey) {
-      reply.code(401).send({ error: "å¬ç½ /v1 å·²å¼å¯ï¼ä½ GATEWAY_API_KEY æªéç½®" });
+      reply.code(401).send({ error: "Ã¥ÂÂ¬Ã§Â½Â /v1 Ã¥Â·Â²Ã¥Â¼ÂÃ¥ÂÂ¯Ã¯Â¼ÂÃ¤Â½Â GATEWAY_API_KEY Ã¦ÂÂªÃ©ÂÂÃ§Â½Â®" });
       return;
     }
     const auth = String(req.headers.authorization || "");
     const bearer = auth.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || "";
     const headerKey = String(req.headers["x-gateway-api-key"] || req.headers["x-api-key"] || "").trim();
     if (bearer === configuredKey || headerKey === configuredKey) return done();
-    // æ¹æ³¨ 2026-07-30ï¼Kelivo å¯è½å¨æ¨¡åæ¢æµææ§é¢è®¾éç»§ç»­å¸¦é keyï¼
-    // åªè®°è·¯å¾å header ç±»åï¼å¸®å©ææ¥ç¼å­/éå¤è¯·æ±ï¼ç»ä¸æä»»æå¯é¥åå¥æ¥å¿ã
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-30Ã¯Â¼ÂKelivo Ã¥ÂÂ¯Ã¨ÂÂ½Ã¥ÂÂ¨Ã¦Â¨Â¡Ã¥ÂÂÃ¦ÂÂ¢Ã¦ÂµÂÃ¦ÂÂÃ¦ÂÂ§Ã©Â¢ÂÃ¨Â®Â¾Ã©ÂÂÃ§Â»Â§Ã§Â»Â­Ã¥Â¸Â¦Ã©ÂÂ keyÃ¯Â¼Â
+    // Ã¥ÂÂªÃ¨Â®Â°Ã¨Â·Â¯Ã¥Â¾ÂÃ¥ÂÂ header Ã§Â±Â»Ã¥ÂÂÃ¯Â¼ÂÃ¥Â¸Â®Ã¥ÂÂ©Ã¦ÂÂÃ¦ÂÂ¥Ã§Â¼ÂÃ¥Â­Â/Ã©ÂÂÃ¥Â¤ÂÃ¨Â¯Â·Ã¦Â±ÂÃ¯Â¼ÂÃ§Â»ÂÃ¤Â¸ÂÃ¦ÂÂÃ¤Â»Â»Ã¦ÂÂÃ¥Â¯ÂÃ©ÂÂ¥Ã¥ÂÂÃ¥ÂÂ¥Ã¦ÂÂ¥Ã¥Â¿ÂÃ£ÂÂ
     console.warn(JSON.stringify({
       event: "gateway_auth_rejected",
       path: req.url.split("?")[0],
       auth_source: bearer ? "bearer" : headerKey ? "x-api-key" : "missing"
     }));
-    reply.code(401).send({ error: "Gateway API Key æ ææç¼ºå¤±" });
+    reply.code(401).send({ error: "Gateway API Key Ã¦ÂÂ Ã¦ÂÂÃ¦ÂÂÃ§Â¼ÂºÃ¥Â¤Â±" });
     return;
   }
   const ip = req.ip || req.connection.remoteAddress;
@@ -553,8 +554,8 @@ app.get("/v1/models", async (req, reply) => {
 app.post("/v1/chat/completions", async (req, reply) => {
   try {
     const body = req.body;
-    // æ¹æ³¨ 2026-07-15ï¼å¬å¼é¨ç½²æ¶æ¥å¿ä¸è½é»è®¤åå¥å®æ´ä¸ä¸æï¼
-    // è¿éåªä¿çè¯·æ±æè¦ï¼é¿å system promptãè®°å¿åèå¤©æ­£æè¿å¥ pm2 æ¥å¿ã
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ©ÂÂ¨Ã§Â½Â²Ã¦ÂÂ¶Ã¦ÂÂ¥Ã¥Â¿ÂÃ¤Â¸ÂÃ¨ÂÂ½Ã©Â»ÂÃ¨Â®Â¤Ã¥ÂÂÃ¥ÂÂ¥Ã¥Â®ÂÃ¦ÂÂ´Ã¤Â¸ÂÃ¤Â¸ÂÃ¦ÂÂÃ¯Â¼Â
+    // Ã¨Â¿ÂÃ©ÂÂÃ¥ÂÂªÃ¤Â¿ÂÃ§ÂÂÃ¨Â¯Â·Ã¦Â±ÂÃ¦ÂÂÃ¨Â¦ÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂ system promptÃ£ÂÂÃ¨Â®Â°Ã¥Â¿ÂÃ¥ÂÂÃ¨ÂÂÃ¥Â¤Â©Ã¦Â­Â£Ã¦ÂÂÃ¨Â¿ÂÃ¥ÂÂ¥ pm2 Ã¦ÂÂ¥Ã¥Â¿ÂÃ£ÂÂ
     console.log(JSON.stringify({
       event: "kelivo_request",
       model: body?.model || "",
@@ -582,8 +583,8 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const finalTimeline = buildTimeline(kelivoMessages, tsDB);
     saveTimeline(finalTimeline);
 
-    // Kelivo åå¾æ¶ content å¸¸æ¯æ°ç»ãé»è®¤åæ ·éä¼ ç»è§è§æ¨¡åï¼
-    // å¦ä¸æ¸¸ä¸æ¯æå¾çï¼å¯è®¾ç½® MULTIMODAL_MODE=text éåææ¬å ä½ã
+    // Kelivo Ã¥ÂÂÃ¥ÂÂ¾Ã¦ÂÂ¶ content Ã¥Â¸Â¸Ã¦ÂÂ¯Ã¦ÂÂ°Ã§Â»ÂÃ£ÂÂÃ©Â»ÂÃ¨Â®Â¤Ã¥ÂÂÃ¦Â Â·Ã©ÂÂÃ¤Â¼Â Ã§Â»ÂÃ¨Â§ÂÃ¨Â§ÂÃ¦Â¨Â¡Ã¥ÂÂÃ¯Â¼Â
+    // Ã¥Â¦ÂÃ¤Â¸ÂÃ¦Â¸Â¸Ã¤Â¸ÂÃ¦ÂÂ¯Ã¦ÂÂÃ¥ÂÂ¾Ã§ÂÂÃ¯Â¼ÂÃ¥ÂÂ¯Ã¨Â®Â¾Ã§Â½Â® MULTIMODAL_MODE=text Ã©ÂÂÃ¥ÂÂÃ¦ÂÂÃ¦ÂÂ¬Ã¥ÂÂ Ã¤Â½ÂÃ£ÂÂ
     const llmMessages = kelivoMessages
       .map(prepareMessageForLLM)
       .filter(Boolean);
@@ -597,7 +598,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
       })
     );
 
-    console.log("æ¬æ¬¡æ³¨å¥çç¹æ®äºä»¶æ°é:", oldEvents.length);
+    console.log("Ã¦ÂÂ¬Ã¦Â¬Â¡Ã¦Â³Â¨Ã¥ÂÂ¥Ã§ÂÂÃ§ÂÂ¹Ã¦Â®ÂÃ¤ÂºÂÃ¤Â»Â¶Ã¦ÂÂ°Ã©ÂÂ:", oldEvents.length);
 
     for (const event of oldEvents) {
       const eventTime = extractTimestampWithMemory(event, tsDB);
@@ -621,11 +622,11 @@ app.post("/v1/chat/completions", async (req, reply) => {
       messages: summarizeMessagesForLog(llmMessages)
     }));
 
-    // ---- èªå¨ä¿®å¤ä¸å®æ´ç tool è°ç¨ï¼ååæ¸çï¼ ----
-    // ç¬¬ä¸éï¼æ è®°éè¦ç§»é¤çç´¢å¼
+    // ---- Ã¨ÂÂªÃ¥ÂÂ¨Ã¤Â¿Â®Ã¥Â¤ÂÃ¤Â¸ÂÃ¥Â®ÂÃ¦ÂÂ´Ã§ÂÂ tool Ã¨Â°ÂÃ§ÂÂ¨Ã¯Â¼ÂÃ¥ÂÂÃ¥ÂÂÃ¦Â¸ÂÃ§ÂÂÃ¯Â¼Â ----
+    // Ã§Â¬Â¬Ã¤Â¸ÂÃ©ÂÂÃ¯Â¼ÂÃ¦Â ÂÃ¨Â®Â°Ã©ÂÂÃ¨Â¦ÂÃ§Â§Â»Ã©ÂÂ¤Ã§ÂÂÃ§Â´Â¢Ã¥Â¼Â
     const removeSet = new Set();
 
-    // æ£æ¥ assistant tool_calls æ¯å¦å®æ´
+    // Ã¦Â£ÂÃ¦ÂÂ¥ assistant tool_calls Ã¦ÂÂ¯Ã¥ÂÂ¦Ã¥Â®ÂÃ¦ÂÂ´
     for (let i = 0; i < llmMessages.length; i++) {
       const msg = llmMessages[i];
       if (msg.role !== "assistant" || !msg.tool_calls) continue;
@@ -642,7 +643,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
       const foundIds = followingTools.map(t => t.tool_call_id);
       const complete = expectedIds.every(id => foundIds.includes(id));
       if (!complete) {
-        // æ è®°è¿æ¡ assistant ä¸ºç§»é¤ï¼åæ¶æ è®°å®åé¢çææ tool æ¶æ¯ä¹ç§»é¤
+        // Ã¦Â ÂÃ¨Â®Â°Ã¨Â¿ÂÃ¦ÂÂ¡ assistant Ã¤Â¸ÂºÃ§Â§Â»Ã©ÂÂ¤Ã¯Â¼ÂÃ¥ÂÂÃ¦ÂÂ¶Ã¦Â ÂÃ¨Â®Â°Ã¥Â®ÂÃ¥ÂÂÃ©ÂÂ¢Ã§ÂÂÃ¦ÂÂÃ¦ÂÂ tool Ã¦Â¶ÂÃ¦ÂÂ¯Ã¤Â¹ÂÃ§Â§Â»Ã©ÂÂ¤
         removeSet.add(i);
         for (let j = i + 1; j < llmMessages.length; j++) {
           if (llmMessages[j].role === "tool") {
@@ -651,49 +652,49 @@ app.post("/v1/chat/completions", async (req, reply) => {
             break;
           }
         }
-        console.log(`â ï¸ èªå¨ä¿®å¤ï¼ç§»é¤ä¸å®æ´ç tool_calls (ç´¢å¼ ${i})`);
+        console.log(`Ã¢ÂÂ Ã¯Â¸Â Ã¨ÂÂªÃ¥ÂÂ¨Ã¤Â¿Â®Ã¥Â¤ÂÃ¯Â¼ÂÃ§Â§Â»Ã©ÂÂ¤Ã¤Â¸ÂÃ¥Â®ÂÃ¦ÂÂ´Ã§ÂÂ tool_calls (Ã§Â´Â¢Ã¥Â¼Â ${i})`);
       }
     }
 
-    // æ£æ¥å­¤ç« tool æ¶æ¯ï¼åé¢æ²¡æå¯¹åºç tool_callsï¼
+    // Ã¦Â£ÂÃ¦ÂÂ¥Ã¥Â­Â¤Ã§Â«Â tool Ã¦Â¶ÂÃ¦ÂÂ¯Ã¯Â¼ÂÃ¥ÂÂÃ©ÂÂ¢Ã¦Â²Â¡Ã¦ÂÂÃ¥Â¯Â¹Ã¥ÂºÂÃ§ÂÂ tool_callsÃ¯Â¼Â
     for (let i = 0; i < llmMessages.length; i++) {
       if (llmMessages[i].role !== "tool") continue;
-      // ååæ¥æ¾æè¿ç assistant
+      // Ã¥ÂÂÃ¥ÂÂÃ¦ÂÂ¥Ã¦ÂÂ¾Ã¦ÂÂÃ¨Â¿ÂÃ§ÂÂ assistant
       let hasMatchingToolCalls = false;
       for (let j = i - 1; j >= 0; j--) {
         const prev = llmMessages[j];
         if (prev.role === "assistant" && prev.tool_calls) {
-          // æ£æ¥è¿ä¸ª tool_call_id æ¯å¦å¨ assistant ç tool_calls ä¸­
+          // Ã¦Â£ÂÃ¦ÂÂ¥Ã¨Â¿ÂÃ¤Â¸Âª tool_call_id Ã¦ÂÂ¯Ã¥ÂÂ¦Ã¥ÂÂ¨ assistant Ã§ÂÂ tool_calls Ã¤Â¸Â­
           const ids = prev.tool_calls.map(tc => tc.id);
           if (ids.includes(llmMessages[i].tool_call_id)) {
             hasMatchingToolCalls = true;
           }
           break;
         } else if (prev.role === "tool") {
-          continue; // ç»§ç»­ååæ¾
+          continue; // Ã§Â»Â§Ã§Â»Â­Ã¥ÂÂÃ¥ÂÂÃ¦ÂÂ¾
         } else {
-          break; // éå° user æå¶ä»æ¶æ¯ï¼åæ­¢
+          break; // Ã©ÂÂÃ¥ÂÂ° user Ã¦ÂÂÃ¥ÂÂ¶Ã¤Â»ÂÃ¦Â¶ÂÃ¦ÂÂ¯Ã¯Â¼ÂÃ¥ÂÂÃ¦Â­Â¢
         }
       }
       if (!hasMatchingToolCalls) {
         removeSet.add(i);
-        console.log(`â ï¸ èªå¨ä¿®å¤ï¼ç§»é¤å­¤ç«ç tool æ¶æ¯ (ç´¢å¼ ${i})`);
+        console.log(`Ã¢ÂÂ Ã¯Â¸Â Ã¨ÂÂªÃ¥ÂÂ¨Ã¤Â¿Â®Ã¥Â¤ÂÃ¯Â¼ÂÃ§Â§Â»Ã©ÂÂ¤Ã¥Â­Â¤Ã§Â«ÂÃ§ÂÂ tool Ã¦Â¶ÂÃ¦ÂÂ¯ (Ã§Â´Â¢Ã¥Â¼Â ${i})`);
       }
     }
 
-    // æç´¢å¼ä»å¤§å°å°å é¤ï¼é¿åç´¢å¼éä¹±
+    // Ã¦ÂÂÃ§Â´Â¢Ã¥Â¼ÂÃ¤Â»ÂÃ¥Â¤Â§Ã¥ÂÂ°Ã¥Â°ÂÃ¥ÂÂ Ã©ÂÂ¤Ã¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ§Â´Â¢Ã¥Â¼ÂÃ©ÂÂÃ¤Â¹Â±
     const sortedRemove = Array.from(removeSet).sort((a, b) => b - a);
     for (const idx of sortedRemove) {
       llmMessages.splice(idx, 1);
     }
 
     if (!TARGET_API_URL || !process.env.TARGET_API_KEY) {
-      return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY æªéç½®" });
+      return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY Ã¦ÂÂªÃ©ÂÂÃ§Â½Â®" });
     }
 
     const requestedStream = body?.stream === true;
 
-    // è¯·æ±æ¨¡å
+    // Ã¨Â¯Â·Ã¦Â±ÂÃ¦Â¨Â¡Ã¥ÂÂ
     const response = await fetch(TARGET_API_URL, {
       method: "POST",
       headers: {
@@ -706,7 +707,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const upstreamContentType = response.headers.get("content-type") || "";
     const shouldStreamResponse = requestedStream || upstreamContentType.includes("text/event-stream");
 
-    // æ¹æ³¨ 2026-07-11ï¼Kelivo å³é­ stream æ¶éè¦æ¶å°æ®é JSONï¼åªå¨è¯·æ±æä¸æ¸¸ç¡®è®¤ä¸º SSE æ¶æææµå¼ç´éã
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-11Ã¯Â¼ÂKelivo Ã¥ÂÂ³Ã©ÂÂ­ stream Ã¦ÂÂ¶Ã©ÂÂÃ¨Â¦ÂÃ¦ÂÂ¶Ã¥ÂÂ°Ã¦ÂÂ®Ã©ÂÂ JSONÃ¯Â¼ÂÃ¥ÂÂªÃ¥ÂÂ¨Ã¨Â¯Â·Ã¦Â±ÂÃ¦ÂÂÃ¤Â¸ÂÃ¦Â¸Â¸Ã§Â¡Â®Ã¨Â®Â¤Ã¤Â¸Âº SSE Ã¦ÂÂ¶Ã¦ÂÂÃ¦ÂÂÃ¦ÂµÂÃ¥Â¼ÂÃ§ÂÂ´Ã©ÂÂÃ£ÂÂ
     if (!shouldStreamResponse) {
       const responseText = await response.text();
       return reply
@@ -716,7 +717,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     if (!response.body) {
-      return reply.code(response.status).send({ error: "ä¸æ¸¸ API æ²¡æè¿åå¯è¯»åçååºä½" });
+      return reply.code(response.status).send({ error: "Ã¤Â¸ÂÃ¦Â¸Â¸ API Ã¦Â²Â¡Ã¦ÂÂÃ¨Â¿ÂÃ¥ÂÂÃ¥ÂÂ¯Ã¨Â¯Â»Ã¥ÂÂÃ§ÂÂÃ¥ÂÂÃ¥ÂºÂÃ¤Â½Â" });
     }
 
     reply.raw.writeHead(response.status, {
@@ -739,7 +740,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
 });
 
 // ========================
-// åé¨æ¥å£ï¼è®°å½å¤éäºä»¶
+// Ã¥ÂÂÃ©ÂÂ¨Ã¦ÂÂ¥Ã¥ÂÂ£Ã¯Â¼ÂÃ¨Â®Â°Ã¥Â½ÂÃ¥ÂÂ¤Ã©ÂÂÃ¤ÂºÂÃ¤Â»Â¶
 // ========================
 app.post("/internal/wake-event", async (req, reply) => {
   try {
@@ -754,11 +755,11 @@ app.post("/internal/wake-event", async (req, reply) => {
 });
 
 // ========================
-// è¯»å .env å¼
+// Ã¨Â¯Â»Ã¥ÂÂ .env Ã¥ÂÂ¼
 // ========================
 function readEnvValue(key) {
-  // æ¹æ³¨ 2026-07-30ï¼Railway Variables æ¯äºç«¯é¨ç½²çæå¨éç½®æºï¼
-  // å®¹å¨å .env åªä½ååºï¼é¿åç®¡çé¡µä¿å­åºçä¸´æ¶æä»¶è¦çå¹³å°åéã
+  // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-30Ã¯Â¼ÂRailway Variables Ã¦ÂÂ¯Ã¤ÂºÂÃ§Â«Â¯Ã©ÂÂ¨Ã§Â½Â²Ã§ÂÂÃ¦ÂÂÃ¥Â¨ÂÃ©ÂÂÃ§Â½Â®Ã¦ÂºÂÃ¯Â¼Â
+  // Ã¥Â®Â¹Ã¥ÂÂ¨Ã¥ÂÂ .env Ã¥ÂÂªÃ¤Â½ÂÃ¥ÂÂÃ¥ÂºÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¤Â¿ÂÃ¥Â­ÂÃ¥ÂÂºÃ§ÂÂÃ¤Â¸Â´Ã¦ÂÂ¶Ã¦ÂÂÃ¤Â»Â¶Ã¨Â¦ÂÃ§ÂÂÃ¥Â¹Â³Ã¥ÂÂ°Ã¥ÂÂÃ©ÂÂÃ£ÂÂ
   if (IS_RAILWAY_RUNTIME && process.env[key]) return process.env[key];
   try {
     const envContent = fs.readFileSync(ENV_FILE, "utf-8");
@@ -808,8 +809,8 @@ function readDiaryEntries(limit = 20) {
   const dir = diaryDirectoryPath();
   try {
     if (!fs.existsSync(dir)) return [];
-    // æ¹æ³¨ 2026-07-15ï¼ç®¡çé¡µåªè¯»å±ç¤º wake-up çæçæ¬å°æ¥è®°ï¼
-    // åªè¯»å DIARY_DIR ä¸ç .md æä»¶ï¼é¿åæä»»æè·¯å¾åå®¹æ´é²å° admin é¡µé¢ã
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂÃ§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¥ÂÂªÃ¨Â¯Â»Ã¥Â±ÂÃ§Â¤Âº wake-up Ã§ÂÂÃ¦ÂÂÃ§ÂÂÃ¦ÂÂ¬Ã¥ÂÂ°Ã¦ÂÂ¥Ã¨Â®Â°Ã¯Â¼Â
+    // Ã¥ÂÂªÃ¨Â¯Â»Ã¥ÂÂ DIARY_DIR Ã¤Â¸ÂÃ§ÂÂ .md Ã¦ÂÂÃ¤Â»Â¶Ã¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ¦ÂÂÃ¤Â»Â»Ã¦ÂÂÃ¨Â·Â¯Ã¥Â¾ÂÃ¥ÂÂÃ¥Â®Â¹Ã¦ÂÂ´Ã©ÂÂ²Ã¥ÂÂ° admin Ã©Â¡ÂµÃ©ÂÂ¢Ã£ÂÂ
     return fs.readdirSync(dir)
       .filter(name => /^[^/\\]+\.md$/i.test(name))
       .sort((a, b) => b.localeCompare(a))
@@ -821,7 +822,7 @@ function readDiaryEntries(limit = 20) {
         return { name, updated_at: stat.mtime.toISOString(), content };
       });
   } catch (err) {
-    return [{ name: "è¯»åæ¥è®°å¤±è´¥", updated_at: new Date().toISOString(), content: err.message || String(err) }];
+    return [{ name: "Ã¨Â¯Â»Ã¥ÂÂÃ¦ÂÂ¥Ã¨Â®Â°Ã¥Â¤Â±Ã¨Â´Â¥", updated_at: new Date().toISOString(), content: err.message || String(err) }];
   }
 }
 
@@ -847,18 +848,18 @@ function basicAuth(req, reply, done) {
 }
 
 // ========================
-// ç®¡çé¡µé¢ GET /admin
+// Ã§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ©ÂÂ¢ GET /admin
 // ========================
 app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
   const serverUptime = Math.floor(process.uptime());
   const wakeUpStatus = wakeUpLastHeartbeat
-    ? `å¨çº¿ï¼ä¸æ¬¡å¿è·³: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}ï¼`
-    : "ç¦»çº¿ææªå¯å¨";
+    ? `Ã¥ÂÂ¨Ã§ÂºÂ¿Ã¯Â¼ÂÃ¤Â¸ÂÃ¦Â¬Â¡Ã¥Â¿ÂÃ¨Â·Â³: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}Ã¯Â¼Â`
+    : "Ã§Â¦Â»Ã§ÂºÂ¿Ã¦ÂÂÃ¦ÂÂªÃ¥ÂÂ¯Ã¥ÂÂ¨";
 
   const currentUrl = readEnvValue("TARGET_API_URL");
   const currentModel = readEnvValue("MODEL_NAME");
   const currentIcon = readEnvValue("CUSTOM_ICON_URL");
-  const gatewayKeyStatus = readEnvValue("GATEWAY_API_KEY") ? "å·²éç½®" : "æªéç½®";
+  const gatewayKeyStatus = readEnvValue("GATEWAY_API_KEY") ? "Ã¥Â·Â²Ã©ÂÂÃ§Â½Â®" : "Ã¦ÂÂªÃ©ÂÂÃ§Â½Â®";
   const wakeConfig = {
     dayWakeAfter: readEnvValueOrDefault("DAY_WAKE_AFTER_MINUTES", "60"),
     nightWakeAfter: readEnvValueOrDefault("NIGHT_WAKE_AFTER_MINUTES", "120"),
@@ -885,11 +886,11 @@ app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
         <pre>${escapeHtml(entry.content)}</pre>
       </details>
     `).join("")
-    : `<div class="diary-empty">è¿æ²¡ææ¥è®°ãæ¨¡åå¨ wake-up åå¤éè¾åº [DIARY]...[/DIARY] åä¼ä¿å­å°è¿éã</div>`;
+    : `<div class="diary-empty">Ã¨Â¿ÂÃ¦Â²Â¡Ã¦ÂÂÃ¦ÂÂ¥Ã¨Â®Â°Ã£ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¥ÂÂ¨ wake-up Ã¥ÂÂÃ¥Â¤ÂÃ©ÂÂÃ¨Â¾ÂÃ¥ÂÂº [DIARY]...[/DIARY] Ã¥ÂÂÃ¤Â¼ÂÃ¤Â¿ÂÃ¥Â­ÂÃ¥ÂÂ°Ã¨Â¿ÂÃ©ÂÂÃ£ÂÂ</div>`;
 
   const authToken = Buffer.from(`${process.env.ADMIN_USER}:${process.env.ADMIN_PASSWORD}`).toString("base64");
   const runtimeConfigNotice = IS_RAILWAY_RUNTIME
-    ? `<div class="hint">Railway æ£æµå°ï¼æ­¤é¡µé¢ä¿å­çæ¯å½åå®¹å¨ç .envãRailway Variables ä¼ä¼åæä¾è¿è¡æ¶éç½®ï¼ä¸æªæè½½ Volume çæä»¶ä¼å¨éæ°é¨ç½²åä¸¢å¤±ï¼è¯·å¨ Railway Variables ä¿®æ¹å¤éæ°å¼å¹¶éæ°é¨ç½²ã</div>`
+    ? `<div class="hint">Railway Ã¦Â£ÂÃ¦ÂµÂÃ¥ÂÂ°Ã¯Â¼ÂÃ¦Â­Â¤Ã©Â¡ÂµÃ©ÂÂ¢Ã¤Â¿ÂÃ¥Â­ÂÃ§ÂÂÃ¦ÂÂ¯Ã¥Â½ÂÃ¥ÂÂÃ¥Â®Â¹Ã¥ÂÂ¨Ã§ÂÂ .envÃ£ÂÂRailway Variables Ã¤Â¼ÂÃ¤Â¼ÂÃ¥ÂÂÃ¦ÂÂÃ¤Â¾ÂÃ¨Â¿ÂÃ¨Â¡ÂÃ¦ÂÂ¶Ã©ÂÂÃ§Â½Â®Ã¯Â¼ÂÃ¤Â¸ÂÃ¦ÂÂªÃ¦ÂÂÃ¨Â½Â½ Volume Ã§ÂÂÃ¦ÂÂÃ¤Â»Â¶Ã¤Â¼ÂÃ¥ÂÂ¨Ã©ÂÂÃ¦ÂÂ°Ã©ÂÂ¨Ã§Â½Â²Ã¥ÂÂÃ¤Â¸Â¢Ã¥Â¤Â±Ã¯Â¼ÂÃ¨Â¯Â·Ã¥ÂÂ¨ Railway Variables Ã¤Â¿Â®Ã¦ÂÂ¹Ã¥ÂÂ¤Ã©ÂÂÃ¦ÂÂ°Ã¥ÂÂ¼Ã¥Â¹Â¶Ã©ÂÂÃ¦ÂÂ°Ã©ÂÂ¨Ã§Â½Â²Ã£ÂÂ</div>`
     : "";
 
   const presets = loadPresets();
@@ -901,8 +902,8 @@ const html = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HEARTBEAT Â· Runtime</title>
-  <!-- å¼å¥ææºå®ä½ -->
+  <title>HEARTBEAT ÃÂ· Runtime</title>
+  <!-- Ã¥Â¼ÂÃ¥ÂÂ¥Ã¦ÂÂÃ¦ÂºÂÃ¥Â®ÂÃ¤Â½Â -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1106,7 +1107,7 @@ const html = `<!DOCTYPE html>
       opacity: 0.7;
     }
 
-    /* é¢è®¾åºå */
+    /* Ã©Â¢ÂÃ¨Â®Â¾Ã¥ÂÂºÃ¥ÂÂ */
     .presets-box {
       background: rgba(255, 250, 252, 0.5);
       backdrop-filter: blur(8px);
@@ -1324,7 +1325,7 @@ const html = `<!DOCTYPE html>
       line-height: 1.6;
     }
 
-    /* å è½½å¨ç» */
+    /* Ã¥ÂÂ Ã¨Â½Â½Ã¥ÂÂ¨Ã§ÂÂ» */
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1346,10 +1347,10 @@ const html = `<!DOCTYPE html>
 <body>
   <div class="container">
     <h2>HEARTBEAT</h2>
-    <div class="subtitle">Runtime Â· AI Residency</div>
+    <div class="subtitle">Runtime ÃÂ· AI Residency</div>
 
     <div class="status">
-      <p>Gateway <strong>è¿è¡ä¸­ (${serverUptime}ç§)</strong></p>
+      <p>Gateway <strong>Ã¨Â¿ÂÃ¨Â¡ÂÃ¤Â¸Â­ (${serverUptime}Ã§Â§Â)</strong></p>
       <p>Auto Wakeup <strong>${wakeUpStatus}</strong></p>
     </div>
     ${runtimeConfigNotice}
@@ -1359,96 +1360,96 @@ const html = `<!DOCTYPE html>
       ${diaryHtml}
     </div>
 
-    <!-- é¢è®¾æ¹æ¡ -->
+    <!-- Ã©Â¢ÂÃ¨Â®Â¾Ã¦ÂÂ¹Ã¦Â¡Â -->
     <div class="presets-box">
-      <h3>é¢è®¾æ¹æ¡</h3>
+      <h3>Ã©Â¢ÂÃ¨Â®Â¾Ã¦ÂÂ¹Ã¦Â¡Â</h3>
       <div class="preset-list" id="presetList"></div>
       <div class="add-preset">
-        <strong>ä¿å­å½åéç½®ä¸ºæ°é¢è®¾</strong>
-        <input id="presetName" placeholder="é¢è®¾åç§°ï¼ä¾å¦ï¼DeepSeek / Claude">
-        <button onclick="savePreset()">ä¿å­ä¸ºé¢è®¾</button>
+        <strong>Ã¤Â¿ÂÃ¥Â­ÂÃ¥Â½ÂÃ¥ÂÂÃ©ÂÂÃ§Â½Â®Ã¤Â¸ÂºÃ¦ÂÂ°Ã©Â¢ÂÃ¨Â®Â¾</strong>
+        <input id="presetName" placeholder="Ã©Â¢ÂÃ¨Â®Â¾Ã¥ÂÂÃ§Â§Â°Ã¯Â¼ÂÃ¤Â¾ÂÃ¥Â¦ÂÃ¯Â¼ÂDeepSeek / Claude">
+        <button onclick="savePreset()">Ã¤Â¿ÂÃ¥Â­ÂÃ¤Â¸ÂºÃ©Â¢ÂÃ¨Â®Â¾</button>
       </div>
     </div>
 
-    <!-- éç½®è¡¨å -->
+    <!-- Ã©ÂÂÃ§Â½Â®Ã¨Â¡Â¨Ã¥ÂÂ -->
     <div class="config-box">
       <form id="configForm" onsubmit="saveConfig(event)">
         <label>API URL</label>
         <input name="target_url" id="f_url" value="${escapeHtml(currentUrl)}">
         <label>API Key</label>
-        <input name="target_key" id="f_key" placeholder="çç©ºä¸ä¿®æ¹">
+        <input name="target_key" id="f_key" placeholder="Ã§ÂÂÃ§Â©ÂºÃ¤Â¸ÂÃ¤Â¿Â®Ã¦ÂÂ¹">
         <label>Gateway API Key</label>
-        <input name="gateway_api_key" id="f_gateway_key" placeholder="å¬ç½ /v1 é´æ keyï¼çç©ºä¸ä¿®æ¹">
-        <div class="hint">å½åç¶æï¼${escapeHtml(gatewayKeyStatus)}ãå¬å¼é¨ç½²å¹¶å¼å¯ ALLOW_PUBLIC_API=true æ¶ï¼Kelivo ç API Key è¯·å¡«åè¿ä¸ª Gateway API Keyï¼ä¸è¦å¡«åä¸æ¸¸ API Keyã</div>
+        <input name="gateway_api_key" id="f_gateway_key" placeholder="Ã¥ÂÂ¬Ã§Â½Â /v1 Ã©ÂÂ´Ã¦ÂÂ keyÃ¯Â¼ÂÃ§ÂÂÃ§Â©ÂºÃ¤Â¸ÂÃ¤Â¿Â®Ã¦ÂÂ¹">
+        <div class="hint">Ã¥Â½ÂÃ¥ÂÂÃ§ÂÂ¶Ã¦ÂÂÃ¯Â¼Â${escapeHtml(gatewayKeyStatus)}Ã£ÂÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ©ÂÂ¨Ã§Â½Â²Ã¥Â¹Â¶Ã¥Â¼ÂÃ¥ÂÂ¯ ALLOW_PUBLIC_API=true Ã¦ÂÂ¶Ã¯Â¼ÂKelivo Ã§ÂÂ API Key Ã¨Â¯Â·Ã¥Â¡Â«Ã¥ÂÂÃ¨Â¿ÂÃ¤Â¸Âª Gateway API KeyÃ¯Â¼ÂÃ¤Â¸ÂÃ¨Â¦ÂÃ¥Â¡Â«Ã¥ÂÂÃ¤Â¸ÂÃ¦Â¸Â¸ API KeyÃ£ÂÂ</div>
         <label>Model Name</label>
         <input name="model_name" id="f_model" value="${escapeHtml(currentModel)}">
         <label>Bark Key</label>
-        <input name="bark_key" id="f_bark" placeholder="çç©ºä¸ä¿®æ¹">
+        <input name="bark_key" id="f_bark" placeholder="Ã§ÂÂÃ§Â©ÂºÃ¤Â¸ÂÃ¤Â¿Â®Ã¦ÂÂ¹">
         <label>Bark Icon URL</label>
-        <input name="custom_icon" id="f_icon" value="${escapeHtml(currentIcon)}" placeholder="å¯é">
+        <input name="custom_icon" id="f_icon" value="${escapeHtml(currentIcon)}" placeholder="Ã¥ÂÂ¯Ã©ÂÂ">
 
         <div class="section-title">Wake Settings</div>
         <div class="grid-2">
           <div>
-            <label>ç½å¤©å¤ä¹æªåå¤åå¤éï¼åéï¼</label>
+            <label>Ã§ÂÂ½Ã¥Â¤Â©Ã¥Â¤ÂÃ¤Â¹ÂÃ¦ÂÂªÃ¥ÂÂÃ¥Â¤ÂÃ¥ÂÂÃ¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¥ÂÂÃ©ÂÂÃ¯Â¼Â</label>
             <input type="number" min="1" name="day_wake_after" id="f_day_wake_after" value="${escapeHtml(wakeConfig.dayWakeAfter)}">
           </div>
           <div>
-            <label>å¤é´å¤ä¹æªåå¤åå¤éï¼åéï¼</label>
+            <label>Ã¥Â¤ÂÃ©ÂÂ´Ã¥Â¤ÂÃ¤Â¹ÂÃ¦ÂÂªÃ¥ÂÂÃ¥Â¤ÂÃ¥ÂÂÃ¥ÂÂ¤Ã©ÂÂÃ¯Â¼ÂÃ¥ÂÂÃ©ÂÂÃ¯Â¼Â</label>
             <input type="number" min="1" name="night_wake_after" id="f_night_wake_after" value="${escapeHtml(wakeConfig.nightWakeAfter)}">
           </div>
           <div>
-            <label>ç½å¤©æ£æ¥é´éï¼åéï¼</label>
+            <label>Ã§ÂÂ½Ã¥Â¤Â©Ã¦Â£ÂÃ¦ÂÂ¥Ã©ÂÂ´Ã©ÂÂÃ¯Â¼ÂÃ¥ÂÂÃ©ÂÂÃ¯Â¼Â</label>
             <input type="number" min="1" name="day_check_interval" id="f_day_check_interval" value="${escapeHtml(wakeConfig.dayCheckInterval)}">
           </div>
           <div>
-            <label>å¤é´æ£æ¥é´éï¼åéï¼</label>
+            <label>Ã¥Â¤ÂÃ©ÂÂ´Ã¦Â£ÂÃ¦ÂÂ¥Ã©ÂÂ´Ã©ÂÂÃ¯Â¼ÂÃ¥ÂÂÃ©ÂÂÃ¯Â¼Â</label>
             <input type="number" min="1" name="night_check_interval" id="f_night_check_interval" value="${escapeHtml(wakeConfig.nightCheckInterval)}">
           </div>
           <div>
-            <label>ç½å¤©å¼å§å°æ¶</label>
+            <label>Ã§ÂÂ½Ã¥Â¤Â©Ã¥Â¼ÂÃ¥Â§ÂÃ¥Â°ÂÃ¦ÂÂ¶</label>
             <input type="number" min="0" max="23" name="wake_day_start_hour" id="f_wake_day_start_hour" value="${escapeHtml(wakeConfig.dayStartHour)}">
           </div>
           <div>
-            <label>ç½å¤©ç»æå°æ¶</label>
+            <label>Ã§ÂÂ½Ã¥Â¤Â©Ã§Â»ÂÃ¦ÂÂÃ¥Â°ÂÃ¦ÂÂ¶</label>
             <input type="number" min="1" max="24" name="wake_day_end_hour" id="f_wake_day_end_hour" value="${escapeHtml(wakeConfig.dayEndHour)}">
           </div>
         </div>
 
         <div class="section-title">Weather</div>
-        <label>å¤©æ°æ³¨å¥</label>
+        <label>Ã¥Â¤Â©Ã¦Â°ÂÃ¦Â³Â¨Ã¥ÂÂ¥</label>
         <select name="weather_enabled" id="f_weather_enabled">
-          <option value="false" ${weatherConfig.enabled === "true" ? "" : "selected"}>å³é­</option>
-          <option value="true" ${weatherConfig.enabled === "true" ? "selected" : ""}>å¼å¯</option>
+          <option value="false" ${weatherConfig.enabled === "true" ? "" : "selected"}>Ã¥ÂÂ³Ã©ÂÂ­</option>
+          <option value="true" ${weatherConfig.enabled === "true" ? "selected" : ""}>Ã¥Â¼ÂÃ¥ÂÂ¯</option>
         </select>
-        <label>ä½ç½®åç§°</label>
-        <input name="weather_location_name" id="f_weather_location_name" value="${escapeHtml(weatherConfig.locationName)}" placeholder="ä¾å¦ï¼Beijing">
+        <label>Ã¤Â½ÂÃ§Â½Â®Ã¥ÂÂÃ§Â§Â°</label>
+        <input name="weather_location_name" id="f_weather_location_name" value="${escapeHtml(weatherConfig.locationName)}" placeholder="Ã¤Â¾ÂÃ¥Â¦ÂÃ¯Â¼ÂBeijing">
         <div class="grid-2">
           <div>
-            <label>çº¬åº¦ Latitude</label>
-            <input name="weather_lat" id="f_weather_lat" value="${escapeHtml(weatherConfig.lat)}" placeholder="ä¾å¦ï¼39.9042">
+            <label>Ã§ÂºÂ¬Ã¥ÂºÂ¦ Latitude</label>
+            <input name="weather_lat" id="f_weather_lat" value="${escapeHtml(weatherConfig.lat)}" placeholder="Ã¤Â¾ÂÃ¥Â¦ÂÃ¯Â¼Â39.9042">
           </div>
           <div>
-            <label>ç»åº¦ Longitude</label>
-            <input name="weather_lon" id="f_weather_lon" value="${escapeHtml(weatherConfig.lon)}" placeholder="ä¾å¦ï¼116.4074">
+            <label>Ã§Â»ÂÃ¥ÂºÂ¦ Longitude</label>
+            <input name="weather_lon" id="f_weather_lon" value="${escapeHtml(weatherConfig.lon)}" placeholder="Ã¤Â¾ÂÃ¥Â¦ÂÃ¯Â¼Â116.4074">
           </div>
         </div>
-        <label>åä½</label>
+        <label>Ã¥ÂÂÃ¤Â½Â</label>
         <select name="weather_units" id="f_weather_units">
-          <option value="metric" ${weatherConfig.units === "fahrenheit" ? "" : "selected"}>ææ°åº¦ / km/h</option>
-          <option value="fahrenheit" ${weatherConfig.units === "fahrenheit" ? "selected" : ""}>åæ°åº¦ / mph</option>
+          <option value="metric" ${weatherConfig.units === "fahrenheit" ? "" : "selected"}>Ã¦ÂÂÃ¦Â°ÂÃ¥ÂºÂ¦ / km/h</option>
+          <option value="fahrenheit" ${weatherConfig.units === "fahrenheit" ? "selected" : ""}>Ã¥ÂÂÃ¦Â°ÂÃ¥ÂºÂ¦ / mph</option>
         </select>
-        <div class="hint">å¤©æ°ä½¿ç¨ Open-Meteo åè´¹æ¥å£ï¼ä¸éè¦ API Keyï¼åªæå¼å¯åæä¼æä½ å¡«åçç»çº¬åº¦è¯»åå¤©æ°ã</div>
-        <button type="submit" class="save">ä¿å­éç½®</button>
+        <div class="hint">Ã¥Â¤Â©Ã¦Â°ÂÃ¤Â½Â¿Ã§ÂÂ¨ Open-Meteo Ã¥ÂÂÃ¨Â´Â¹Ã¦ÂÂ¥Ã¥ÂÂ£Ã¯Â¼ÂÃ¤Â¸ÂÃ©ÂÂÃ¨Â¦Â API KeyÃ¯Â¼ÂÃ¥ÂÂªÃ¦ÂÂÃ¥Â¼ÂÃ¥ÂÂ¯Ã¥ÂÂÃ¦ÂÂÃ¤Â¼ÂÃ¦ÂÂÃ¤Â½Â Ã¥Â¡Â«Ã¥ÂÂÃ§ÂÂÃ§Â»ÂÃ§ÂºÂ¬Ã¥ÂºÂ¦Ã¨Â¯Â»Ã¥ÂÂÃ¥Â¤Â©Ã¦Â°ÂÃ£ÂÂ</div>
+        <button type="submit" class="save">Ã¤Â¿ÂÃ¥Â­ÂÃ©ÂÂÃ§Â½Â®</button>
       </form>
     </div>
 
-    <button onclick="restartServices()" class="restart">ä¸é®éå¯æææå¡</button>
-    <div class="note">ä¿®æ¹éç½®ååä¿å­ï¼åç¹éå¯æé®çæ</div>
+    <button onclick="restartServices()" class="restart">Ã¤Â¸ÂÃ©ÂÂ®Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ¦ÂÂÃ¦ÂÂÃ¥ÂÂ¡</button>
+    <div class="note">Ã¤Â¿Â®Ã¦ÂÂ¹Ã©ÂÂÃ§Â½Â®Ã¥ÂÂÃ¥ÂÂÃ¤Â¿ÂÃ¥Â­ÂÃ¯Â¼ÂÃ¥ÂÂÃ§ÂÂ¹Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ©ÂÂ®Ã§ÂÂÃ¦ÂÂ</div>
   </div>
 
   <script>
-    // ====== ä»¥ä¸èæ¬ä¿æä¸å ======
+    // ====== Ã¤Â»Â¥Ã¤Â¸ÂÃ¨ÂÂÃ¦ÂÂ¬Ã¤Â¿ÂÃ¦ÂÂÃ¤Â¸ÂÃ¥ÂÂ ======
     const AUTH_HEADER = ${authHeaderJson};
     let presets = ${presetsJson};
 
@@ -1464,13 +1465,13 @@ const html = `<!DOCTYPE html>
     function renderPresets() {
       const list = document.getElementById("presetList");
       if (!presets.length) {
-        list.innerHTML = '<div style="color:#aaa;font-size:12px;font-style:italic;">è¿æ²¡æé¢è®¾ï¼ä¿å­å½åéç½®å³å¯åå»ºã</div>';
+        list.innerHTML = '<div style="color:#aaa;font-size:12px;font-style:italic;">Ã¨Â¿ÂÃ¦Â²Â¡Ã¦ÂÂÃ©Â¢ÂÃ¨Â®Â¾Ã¯Â¼ÂÃ¤Â¿ÂÃ¥Â­ÂÃ¥Â½ÂÃ¥ÂÂÃ©ÂÂÃ§Â½Â®Ã¥ÂÂ³Ã¥ÂÂ¯Ã¥ÂÂÃ¥Â»ÂºÃ£ÂÂ</div>';
         return;
       }
       list.innerHTML = presets.map((p, idx) => {
         return '<div class="preset-item">' +
           '<button class="preset-btn" onclick="applyPreset(' + idx + ')">' + escapeHtmlText(p.name) + '<span>' + escapeHtmlText(p.model_name) + '</span></button>' +
-          '<button class="preset-del" onclick="deletePreset(' + idx + ')">å é¤</button>' +
+          '<button class="preset-del" onclick="deletePreset(' + idx + ')">Ã¥ÂÂ Ã©ÂÂ¤</button>' +
         '</div>';
       }).join("");
     }
@@ -1506,7 +1507,7 @@ const html = `<!DOCTYPE html>
       };
 
       if (!payload.target_url || !payload.model_name) {
-        alert("è¯·å¡«å API å°ååæ¨¡ååç§°");
+        alert("Ã¨Â¯Â·Ã¥Â¡Â«Ã¥ÂÂ API Ã¥ÂÂ°Ã¥ÂÂÃ¥ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¥ÂÂÃ§Â§Â°");
         return;
       }
 
@@ -1521,12 +1522,12 @@ const html = `<!DOCTYPE html>
           document.getElementById("f_key").value = "";
           document.getElementById("f_gateway_key").value = "";
           document.getElementById("f_bark").value = "";
-          alert("éç½®å·²ä¿å­ï¼ç°å¨å¯ä»¥ç¹å»éå¯æé®è®©æ°éç½®çæã");
+          alert("Ã©ÂÂÃ§Â½Â®Ã¥Â·Â²Ã¤Â¿ÂÃ¥Â­ÂÃ¯Â¼ÂÃ§ÂÂ°Ã¥ÂÂ¨Ã¥ÂÂ¯Ã¤Â»Â¥Ã§ÂÂ¹Ã¥ÂÂ»Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ©ÂÂ®Ã¨Â®Â©Ã¦ÂÂ°Ã©ÂÂÃ§Â½Â®Ã§ÂÂÃ¦ÂÂÃ£ÂÂ");
         } else {
-          alert("ä¿å­å¤±è´¥ï¼" + (result.error || "æªç¥éè¯¯"));
+          alert("Ã¤Â¿ÂÃ¥Â­ÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â" + (result.error || "Ã¦ÂÂªÃ§ÂÂ¥Ã©ÂÂÃ¨Â¯Â¯"));
         }
       } catch (e) {
-        alert("è¯·æ±å¤±è´¥ï¼" + e.message);
+        alert("Ã¨Â¯Â·Ã¦Â±ÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â" + e.message);
       }
     }
 
@@ -1535,8 +1536,8 @@ const html = `<!DOCTYPE html>
       const target_url = document.getElementById("f_url").value.trim();
       const target_key = document.getElementById("f_key").value.trim();
       const model_name = document.getElementById("f_model").value.trim();
-      if (!name) { alert("è¯·å¡«åé¢è®¾åç§°"); return; }
-      if (!target_url || !model_name) { alert("è¯·åå¡«å API å°ååæ¨¡ååç§°"); return; }
+      if (!name) { alert("Ã¨Â¯Â·Ã¥Â¡Â«Ã¥ÂÂÃ©Â¢ÂÃ¨Â®Â¾Ã¥ÂÂÃ§Â§Â°"); return; }
+      if (!target_url || !model_name) { alert("Ã¨Â¯Â·Ã¥ÂÂÃ¥Â¡Â«Ã¥ÂÂ API Ã¥ÂÂ°Ã¥ÂÂÃ¥ÂÂÃ¦Â¨Â¡Ã¥ÂÂÃ¥ÂÂÃ§Â§Â°"); return; }
 
       const resp = await fetch("/admin/presets/save", {
         method: "POST",
@@ -1551,15 +1552,15 @@ const html = `<!DOCTYPE html>
         else presets.push(entry);
         renderPresets();
         document.getElementById("presetName").value = "";
-        alert("é¢è®¾å·²ä¿å­ï¼" + name);
+        alert("Ã©Â¢ÂÃ¨Â®Â¾Ã¥Â·Â²Ã¤Â¿ÂÃ¥Â­ÂÃ¯Â¼Â" + name);
       } else {
-        alert("ä¿å­å¤±è´¥ï¼" + (r.error || "æªç¥éè¯¯"));
+        alert("Ã¤Â¿ÂÃ¥Â­ÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â" + (r.error || "Ã¦ÂÂªÃ§ÂÂ¥Ã©ÂÂÃ¨Â¯Â¯"));
       }
     }
 
     async function deletePreset(idx) {
       const p = presets[idx];
-      if (!confirm("å é¤é¢è®¾ã" + p.name + "ãï¼")) return;
+      if (!confirm("Ã¥ÂÂ Ã©ÂÂ¤Ã©Â¢ÂÃ¨Â®Â¾Ã£ÂÂ" + p.name + "Ã£ÂÂÃ¯Â¼Â")) return;
       await fetch("/admin/presets/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": AUTH_HEADER },
@@ -1570,7 +1571,7 @@ const html = `<!DOCTYPE html>
     }
 
     async function restartServices() {
-      if (!confirm("ç¡®å®è¦éå¯ Gateway å wake_up åï¼")) return;
+      if (!confirm("Ã§Â¡Â®Ã¥Â®ÂÃ¨Â¦ÂÃ©ÂÂÃ¥ÂÂ¯ Gateway Ã¥ÂÂ wake_up Ã¥ÂÂÃ¯Â¼Â")) return;
       try {
         const resp = await fetch("/admin/restart", {
           method: "POST",
@@ -1579,13 +1580,13 @@ const html = `<!DOCTYPE html>
         });
         const result = await resp.json();
         if (result.success) {
-          alert("éå¯æåï¼é¡µé¢ç¨åèªå¨å·æ°ã");
+          alert("Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ¥ÂÂÃ¯Â¼ÂÃ©Â¡ÂµÃ©ÂÂ¢Ã§Â¨ÂÃ¥ÂÂÃ¨ÂÂªÃ¥ÂÂ¨Ã¥ÂÂ·Ã¦ÂÂ°Ã£ÂÂ");
           setTimeout(() => location.reload(), 3000);
         } else {
-          alert("éå¯å¤±è´¥ï¼" + (result.error || "æªç¥éè¯¯"));
+          alert("Ã©ÂÂÃ¥ÂÂ¯Ã¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â" + (result.error || "Ã¦ÂÂªÃ§ÂÂ¥Ã©ÂÂÃ¨Â¯Â¯"));
         }
       } catch (e) {
-        alert("è¯·æ±å¤±è´¥ï¼" + e.message);
+        alert("Ã¨Â¯Â·Ã¦Â±ÂÃ¥Â¤Â±Ã¨Â´Â¥Ã¯Â¼Â" + e.message);
       }
     }
 
@@ -1597,7 +1598,7 @@ const html = `<!DOCTYPE html>
   reply.type("text/html").send(html);
 });
 // ========================
-// ç®¡çä¿å­ POST /admin/save
+// Ã§Â®Â¡Ã§ÂÂÃ¤Â¿ÂÃ¥Â­Â POST /admin/save
 // ========================
 app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
   try {
@@ -1622,15 +1623,15 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
     } = req.body || {};
 
     if (!target_url || !model_name) {
-      return reply.code(400).send({ error: "target_url / model_name å¿å¡«" });
+      return reply.code(400).send({ error: "target_url / model_name Ã¥Â¿ÂÃ¥Â¡Â«" });
     }
 
     const finalTargetKey = target_key || readEnvValue("TARGET_API_KEY");
     const finalGatewayKey = gateway_api_key || readEnvValue("GATEWAY_API_KEY");
     const finalBarkKey = bark_key || readEnvValue("BARK_KEY");
 
-    // æ¹æ³¨ 2026-06-26ï¼å¬å¼çæå¤éç­ç¥åå¤©æ°ä¿¡æ¯å¼æ¾å°ç®¡çé¡µï¼ä¿å­æ¶åè½»éæ ¡éªï¼é¿åç©ºå¼æè¿è¡ä¸­çå¤éèå¥ååã
-    // æ¹æ³¨ 2026-07-15ï¼GATEWAY_API_KEY æ¯å¬å¼ /v1 çå®¢æ·ç«¯é´æ keyï¼ä¸è½åä¸æ¸¸ TARGET_API_KEY æ··å¨ä¸èµ·å±ç¤ºæè¿åã
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-06-26Ã¯Â¼ÂÃ¥ÂÂ¬Ã¥Â¼ÂÃ§ÂÂÃ¦ÂÂÃ¥ÂÂ¤Ã©ÂÂÃ§Â­ÂÃ§ÂÂ¥Ã¥ÂÂÃ¥Â¤Â©Ã¦Â°ÂÃ¤Â¿Â¡Ã¦ÂÂ¯Ã¥Â¼ÂÃ¦ÂÂ¾Ã¥ÂÂ°Ã§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¯Â¼ÂÃ¤Â¿ÂÃ¥Â­ÂÃ¦ÂÂ¶Ã¥ÂÂÃ¨Â½Â»Ã©ÂÂÃ¦Â Â¡Ã©ÂªÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ§Â©ÂºÃ¥ÂÂ¼Ã¦ÂÂÃ¨Â¿ÂÃ¨Â¡ÂÃ¤Â¸Â­Ã§ÂÂÃ¥ÂÂ¤Ã©ÂÂÃ¨ÂÂÃ¥Â¥ÂÃ¥ÂÂÃ¥ÂÂÃ£ÂÂ
+    // Ã¦ÂÂ¹Ã¦Â³Â¨ 2026-07-15Ã¯Â¼ÂGATEWAY_API_KEY Ã¦ÂÂ¯Ã¥ÂÂ¬Ã¥Â¼Â /v1 Ã§ÂÂÃ¥Â®Â¢Ã¦ÂÂ·Ã§Â«Â¯Ã©ÂÂ´Ã¦ÂÂ keyÃ¯Â¼ÂÃ¤Â¸ÂÃ¨ÂÂ½Ã¥ÂÂÃ¤Â¸ÂÃ¦Â¸Â¸ TARGET_API_KEY Ã¦Â·Â·Ã¥ÂÂ¨Ã¤Â¸ÂÃ¨ÂµÂ·Ã¥Â±ÂÃ§Â¤ÂºÃ¦ÂÂÃ¨Â¿ÂÃ¥ÂÂÃ£ÂÂ
     writeEnvUpdates({
       TARGET_API_URL: target_url,
       TARGET_API_KEY: finalTargetKey,
@@ -1652,7 +1653,7 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
       ADMIN_USER: readEnvValue("ADMIN_USER"),
       ADMIN_PASSWORD: readEnvValue("ADMIN_PASSWORD")
     });
-    console.log("\nâ .env å·²æ´æ°ï¼å¯éè¿ç®¡çé¡µéå¯æå¡\n");
+    console.log("\nÃ¢ÂÂ .env Ã¥Â·Â²Ã¦ÂÂ´Ã¦ÂÂ°Ã¯Â¼ÂÃ¥ÂÂ¯Ã©ÂÂÃ¨Â¿ÂÃ§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ¥ÂÂ¡\n");
 
     if (wantsJsonResponse(req)) {
       return reply.send({ success: true });
@@ -1660,11 +1661,11 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
 
     reply.type("text/html").send(`<!DOCTYPE html>
 <html lang="zh">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>å·²ä¿å­</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Ã¥Â·Â²Ã¤Â¿ÂÃ¥Â­Â</title></head>
 <body style="text-align:center;font-family:-apple-system,sans-serif;padding:40px;">
-  <h2>â éç½®å·²ä¿å­</h2>
-  <p>ç°å¨å¯ä»¥è¿åç®¡çé¡µï¼ç¹å»éå¯æé®è®©æ°éç½®çæã</p>
-  <a href="/admin">â è¿åè®¾ç½®</a>
+  <h2>Ã¢ÂÂ Ã©ÂÂÃ§Â½Â®Ã¥Â·Â²Ã¤Â¿ÂÃ¥Â­Â</h2>
+  <p>Ã§ÂÂ°Ã¥ÂÂ¨Ã¥ÂÂ¯Ã¤Â»Â¥Ã¨Â¿ÂÃ¥ÂÂÃ§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¯Â¼ÂÃ§ÂÂ¹Ã¥ÂÂ»Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ©ÂÂ®Ã¨Â®Â©Ã¦ÂÂ°Ã©ÂÂÃ§Â½Â®Ã§ÂÂÃ¦ÂÂÃ£ÂÂ</p>
+  <a href="/admin">Ã¢ÂÂ Ã¨Â¿ÂÃ¥ÂÂÃ¨Â®Â¾Ã§Â½Â®</a>
 </body></html>`);
   } catch (err) {
     console.error(err);
@@ -1673,12 +1674,12 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 // ========================
-// ä¿å­é¢è®¾æ¹æ¡
+// Ã¤Â¿ÂÃ¥Â­ÂÃ©Â¢ÂÃ¨Â®Â¾Ã¦ÂÂ¹Ã¦Â¡Â
 // ========================
 app.post("/admin/presets/save", { preHandler: basicAuth }, async (req, reply) => {
   const { name, target_url, target_key, model_name } = req.body || {};
   if (!name || !target_url || !model_name) {
-    return reply.code(400).send({ error: "name / target_url / model_name å¿å¡«" });
+    return reply.code(400).send({ error: "name / target_url / model_name Ã¥Â¿ÂÃ¥Â¡Â«" });
   }
   const presets = loadPresets();
   const existing = presets.findIndex(p => p.name === name);
@@ -1690,7 +1691,7 @@ app.post("/admin/presets/save", { preHandler: basicAuth }, async (req, reply) =>
 });
 
 // ========================
-// å é¤é¢è®¾æ¹æ¡
+// Ã¥ÂÂ Ã©ÂÂ¤Ã©Â¢ÂÃ¨Â®Â¾Ã¦ÂÂ¹Ã¦Â¡Â
 // ========================
 app.post("/admin/presets/delete", { preHandler: basicAuth }, async (req, reply) => {
   const { name } = req.body || {};
@@ -1700,7 +1701,7 @@ app.post("/admin/presets/delete", { preHandler: basicAuth }, async (req, reply) 
 });
 
 // ========================
-// å¿è·³æ¥å£
+// Ã¥Â¿ÂÃ¨Â·Â³Ã¦ÂÂ¥Ã¥ÂÂ£
 // ========================
 app.post("/internal/heartbeat", async (req, reply) => {
   wakeUpLastHeartbeat = Date.now();
@@ -1708,41 +1709,41 @@ app.post("/internal/heartbeat", async (req, reply) => {
 });
 
 // ========================
-// ç®¡çé¡µä¸é®éå¯
+// Ã§Â®Â¡Ã§ÂÂÃ©Â¡ÂµÃ¤Â¸ÂÃ©ÂÂ®Ã©ÂÂÃ¥ÂÂ¯
 // ========================
 app.post("/admin/restart", { preHandler: basicAuth }, async (req, reply) => {
   const restartCommand = readRestartCommand();
 
-  // ç«å³åå¤ï¼é¿åéå¯æ¶è¿æ¥ä¸­æ­
-  reply.send({ success: true, output: `éå¯æä»¤å·²åéï¼${restartCommand}` });
+  // Ã§Â«ÂÃ¥ÂÂ³Ã¥ÂÂÃ¥Â¤ÂÃ¯Â¼ÂÃ©ÂÂ¿Ã¥ÂÂÃ©ÂÂÃ¥ÂÂ¯Ã¦ÂÂ¶Ã¨Â¿ÂÃ¦ÂÂ¥Ã¤Â¸Â­Ã¦ÂÂ­
+  reply.send({ success: true, output: `Ã©ÂÂÃ¥ÂÂ¯Ã¦ÂÂÃ¤Â»Â¤Ã¥Â·Â²Ã¥ÂÂÃ©ÂÂÃ¯Â¼Â${restartCommand}` });
   
-  // ç¨åéå¯ãé»è®¤åªéå¯æ¬é¡¹ç®çä¸¤ä¸ªè¿ç¨ï¼å¯éè¿ RESTART_COMMAND èªå®ä¹ã
+  // Ã§Â¨ÂÃ¥ÂÂÃ©ÂÂÃ¥ÂÂ¯Ã£ÂÂÃ©Â»ÂÃ¨Â®Â¤Ã¥ÂÂªÃ©ÂÂÃ¥ÂÂ¯Ã¦ÂÂ¬Ã©Â¡Â¹Ã§ÂÂ®Ã§ÂÂÃ¤Â¸Â¤Ã¤Â¸ÂªÃ¨Â¿ÂÃ§Â¨ÂÃ¯Â¼ÂÃ¥ÂÂ¯Ã©ÂÂÃ¨Â¿Â RESTART_COMMAND Ã¨ÂÂªÃ¥Â®ÂÃ¤Â¹ÂÃ£ÂÂ
   const { exec } = require("child_process");
   exec(restartCommand, (err, stdout, stderr) => {
     if (err) {
-      console.error("éå¯å¤±è´¥:", stderr);
+      console.error("Ã©ÂÂÃ¥ÂÂ¯Ã¥Â¤Â±Ã¨Â´Â¥:", stderr);
     } else {
-      console.log("æå¡å·²éå¯:", stdout);
+      console.log("Ã¦ÂÂÃ¥ÂÂ¡Ã¥Â·Â²Ã©ÂÂÃ¥ÂÂ¯:", stdout);
     }
   });
 });
 
 // ========================
-// æµè¯ Bark
+// Ã¦ÂµÂÃ¨Â¯Â Bark
 // ========================
 app.get("/test-bark", async (req, reply) => {
   const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
-  appendSpecialEvent(`ï¼${formattedTime} ååç»ç¨æ·åäº Barkï¼è¿æ¯ä¸æ¡æµè¯æ¨éãï¼`);
+  appendSpecialEvent(`Ã¯Â¼Â${formattedTime} Ã¥ÂÂÃ¥ÂÂÃ§Â»ÂÃ§ÂÂ¨Ã¦ÂÂ·Ã¥ÂÂÃ¤ÂºÂ BarkÃ¯Â¼ÂÃ¨Â¿ÂÃ¦ÂÂ¯Ã¤Â¸ÂÃ¦ÂÂ¡Ã¦ÂµÂÃ¨Â¯ÂÃ¦ÂÂ¨Ã©ÂÂÃ£ÂÂÃ¯Â¼Â`);
   reply.send({ success: true });
 });
 
 // ========================
-// å¯å¨æå¡
+// Ã¥ÂÂ¯Ã¥ÂÂ¨Ã¦ÂÂÃ¥ÂÂ¡
 // ========================
 app.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
-  console.log(`â Gateway è¿è¡å¨ ${address}`);
+  console.log(`Ã¢ÂÂ Gateway Ã¨Â¿ÂÃ¨Â¡ÂÃ¥ÂÂ¨ ${address}`);
 });
