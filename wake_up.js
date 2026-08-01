@@ -2,13 +2,20 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const { buildNtfyPayload } = require("./ntfy_priority");
+const {
+  formatDateTimeInTimeZone,
+  getDatePartsInTimeZone,
+  getHourInTimeZone,
+  resolveTimeZone,
+  zonedWallTimeToDate
+} = require("./time_utils");
 
 const TIMELINE_PATH = path.join(__dirname, "enhanced_messages.json");
 const PORT = Number(process.env.PORT) || 3000;
 const GATEWAY_BASE_URL = (process.env.GATEWAY_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const GATEWAY_URL = `${GATEWAY_BASE_URL}/internal/wake-event`;
 const HEARTBEAT_URL = `${GATEWAY_BASE_URL}/internal/heartbeat`;
-const TIME_ZONE = process.env.TIME_ZONE || "Europe/London";
+const TIME_ZONE = resolveTimeZone();
 const WEATHER_TIMEOUT_MS = 5000;
 const DIARY_DIR_NAME = process.env.DIARY_DIR || "diary";
 const DIARY_DIR_PATH = path.isAbsolute(DIARY_DIR_NAME)
@@ -29,33 +36,13 @@ function readBooleanEnv(key, fallback = false) {
   return ["1", "true", "yes", "on"].includes(raw);
 }
 
-function getDatePartsInTimeZone(date = new Date()) {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  });
-  const parts = Object.fromEntries(formatter.formatToParts(date).map(part => [part.type, part.value]));
-  return {
-    year: parts.year,
-    month: parts.month,
-    day: parts.day,
-    hour: parts.hour,
-    minute: parts.minute
-  };
-}
-
 function getDiaryDateString(date = new Date()) {
-  const parts = getDatePartsInTimeZone(date);
+  const parts = getDatePartsInTimeZone(date, TIME_ZONE);
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function getDiaryTimeString(date = new Date()) {
-  const parts = getDatePartsInTimeZone(date);
+  const parts = getDatePartsInTimeZone(date, TIME_ZONE);
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
@@ -158,7 +145,7 @@ async function sendPushNotification({ title, body }) {
 }
 
 function isDayTime(date = new Date()) {
-  const hour = date.getHours();
+  const hour = getHourInTimeZone(date, TIME_ZONE);
   const start = readNumberEnv("WAKE_DAY_START_HOUR", 10, { min: 0, max: 23 });
   const end = readNumberEnv("WAKE_DAY_END_HOUR", 24, { min: 1, max: 24 });
   if (start === end) return true;
@@ -321,18 +308,11 @@ function getNow() {
 }
 
 function getChinaTimeString() {
-  return new Date().toLocaleString("zh-CN", { timeZone: TIME_ZONE });
+  return formatDateTimeInTimeZone(new Date(), TIME_ZONE);
 }
 
 function getLocalTimeString() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const yyyy = now.getFullYear();
-  const mm = pad(now.getMonth() + 1);
-  const dd = pad(now.getDate());
-  const hh = pad(now.getHours());
-  const min = pad(now.getMinutes());
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  return formatDateTimeInTimeZone(new Date(), TIME_ZONE);
 }
 
 function shouldWake(lastUserTime) {
@@ -346,9 +326,7 @@ function parseTimelineTimestamp(value) {
   const match = text.match(/（?\s*(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[ T]?)(\d{1,2})[:：](\d{2})/);
   if (!match) return null;
   const [, yyyy, , month, day, hour, minute] = match;
-  const normalized = `${yyyy}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")} ${String(hour).padStart(2, "0")}:${minute}`;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return zonedWallTimeToDate({ year: yyyy, month, day, hour, minute }, TIME_ZONE);
 }
 
 function getLastUserTime(messages) {
