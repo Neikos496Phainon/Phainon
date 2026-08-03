@@ -10,26 +10,60 @@ try { if (fs.existsSync(CONFIG_PATH)) fileConfig = JSON.parse(fs.readFileSync(CO
 
 const MCP_URL = process.env.OMBRE_MCP_URL || fileConfig.mcpUrl;
 const CLIENT_ID = process.env.OMBRE_CLIENT_ID || fileConfig.clientId;
-const REFRESH_TOKEN = process.env.OMBRE_REFRESH_TOKEN || fileConfig.refreshToken;
 const BARK_KEY = process.env.BARK_KEY;
 const INTERVAL_MIN = Number(process.env.OMBRE_WAKE_INTERVAL_MIN || 60);
 const TITLE = process.env.OMBRE_WAKE_TITLE || "小白想你了 💭";
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const TOKEN_FILE = path.join(DATA_DIR, "omb_token.json");
 
-if (!MCP_URL || !CLIENT_ID || !REFRESH_TOKEN || !BARK_KEY) {
+// ---- refresh_token 持久化：Ombre Brain 每次刷新都会轮换 refresh_token，
+//      静态配置的 token 用一次就作废（invalid_grant / unknown refresh token）。
+//      所以刷新后必须把新 token 写进 /data 卷，下次启动/刷新优先读文件。
+function loadPersistedToken() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const d = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf-8"));
+      if (d.refresh_token) return d.refresh_token;
+    }
+  } catch (e) { console.error("[wake_omb] token 文件读取失败:", e.message); }
+  return null;
+}
+
+function savePersistedToken(refreshToken) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify({ refresh_token: refreshToken, updated_at: new Date().toISOString() }));
+  } catch (e) { console.error("[wake_omb] token 持久化失败:", e.message); }
+}
+
+let refreshToken = loadPersistedToken() || process.env.OMBRE_REFRESH_TOKEN || fileConfig.refreshToken;
+
+if (!MCP_URL || !CLIENT_ID || !refreshToken || !BARK_KEY) {
   console.error("[wake_omb] 缺少配置：需要 OMBRE_MCP_URL / OMBRE_CLIENT_ID / OMBRE_REFRESH_TOKEN / BARK_KEY");
   process.exit(1);
 }
 
 // 用 refresh_token 换 access_token（有效期30天，自动续期）
 async function getAccessToken() {
+  // 每次刷新前从文件重读，防止进程重启后文件里已有更新鲜的 token
+  const persisted = loadPersistedToken();
+  if (persisted) refreshToken = persisted;
+
   const authBase = MCP_URL.replace(/\/mcp$/, "");
   const resp = await fetch(authBase + "/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: REFRESH_TOKEN, client_id: CLIENT_ID })
+    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: CLIENT_ID })
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error("token refresh failed: " + JSON.stringify(data).slice(0, 200));
+
+  // 关键：轮换后的新 refresh_token 必须持久化，否则下一次刷新直接 invalid_grant
+  if (data.refresh_token && data.refresh_token !== refreshToken) {
+    refreshToken = data.refresh_token;
+    savePersistedToken(refreshToken);
+    console.log("[wake_omb] refresh_token 已轮换并持久化到", TOKEN_FILE);
+  }
   return data.access_token;
 }
 
@@ -40,7 +74,7 @@ async function mcpCall(accessToken, method, params = {}) {
     "Accept": "application/json, text/event-stream",
     "Authorization": "Bearer " + accessToken
   };
-  await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "dylan-wake-omb", version: "1.0.0" } } }) });
+  await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "wake_omb", version: "1.0.0" } } }) });
   await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) });
   const resp = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 2, method, params }) });
   return resp.json();
@@ -105,6 +139,6 @@ async function wakeOnce() {
   }
 }
 
-console.log("[wake_omb] 小白自动唤醒模块启动，每", INTERVAL_MIN, "分钟检查一次");
+console.log("[wake_omb] 小白自动唤醒模块启动，每", INTERVAL_MIN, "分钟检查一次，token 持久化于", TOKEN_FILE);
 wakeOnce();
 setInterval(wakeOnce, Math.max(5, INTERVAL_MIN) * 60 * 1000);
