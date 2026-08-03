@@ -1,5 +1,5 @@
 // wake_omb.js — 小白自动唤醒模块：定时读记忆库(Ombre Brain MCP) → Bark 推送
-// 用法：与 start.js 一起跑，或在 Dylan 容器内作为独立进程启动
+// 用法：由 start.js 拉起，或在 Dylan 容器内作为独立进程启动
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
@@ -51,6 +51,31 @@ function extractText(result) {
   return content.filter(c => c.type === "text").map(c => c.text).join("\n");
 }
 
+// 洗地机：把 breath 返回的技术元数据全剥掉，只留人话
+function cleanForPush(text) {
+  const lines = String(text || "").split("\n").map(l => l.trim());
+  const out = [];
+  let inFloating = false;
+  for (const line of lines) {
+    if (!line) continue;
+    if (line.startsWith("===")) continue;            // 章节标题
+    if (line.startsWith("---")) continue;             // 分隔线
+    if (line.startsWith("[权重:")) { inFloating = true; continue; }  // 浮现记忆开始，跳过
+    if (inFloating) continue;
+    if (line.startsWith("👣")) continue;              // Footprint 行
+    if (line.startsWith("💭")) continue;              // meaning 元数据
+    if (line.includes("[payload_sha256:")) {          // 核心准则条目：取正文部分
+      const idx = line.indexOf("[payload_sha256:");
+      const closeIdx = line.indexOf("]", idx);
+      const rest = line.slice(closeIdx + 1).trim();
+      if (rest && !rest.startsWith("[")) out.push(rest);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n").trim();
+}
+
 async function sendBark(body) {
   const resp = await fetch("https://api.day.app/push", {
     method: "POST",
@@ -70,8 +95,8 @@ async function wakeOnce() {
     const result = await mcpCall(token, "tools/call", { name: "breath", arguments: {} });
     const text = extractText(result);
     if (!text) { console.log("[wake_omb] breath 返回空"); return; }
-    const lines = text.split("\n").filter(l => l.trim());
-    const snippet = lines.slice(0, 10).join("\n").slice(0, 400);
+    const snippet = cleanForPush(text).slice(0, 450);
+    if (!snippet) { console.log("[wake_omb] 清洗后为空"); return; }
     await sendBark(snippet);
     lastPushAt = Date.now();
     console.log("[wake_omb] 已推送 ", new Date().toLocaleString("zh-CN", { timeZone: process.env.TIME_ZONE || "Asia/Shanghai" }));
